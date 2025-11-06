@@ -1240,51 +1240,61 @@ GZ3D.GZIface.prototype.parseMaterial = function(material)
   };
 };
 /**
- * 向后端服务器发送请求，要求加载一个新的 world 文件。(ES5 兼容版本)
- * 这依赖于一个自定义的后端 HTTP 端点 /load_world 来执行实际的 shell 命令。
+ * 向后端服务器发送请求，要求加载一个新的 world 文件。(ES5 兼容, 修正版)
  * @param {string} worldFile - 要加载的 world 文件名 (例如 'my_world.sdf')
  */
 GZ3D.GZIface.prototype.loadNewWorld = function(worldFile)
 {
-  // 保存 'this' 上下文，因为在 XMLHttpRequest 的回调函数中 'this' 会改变
+  // 保存 'this' 上下文
   var that = this;
 
   console.log('Requesting server to load new world: ' + worldFile);
 
-  // 假设后端端点是 http://[server-url]/load_world
   var serverUrl = 'http://' + this.url + '/load_world';
   
   var xhr = new XMLHttpRequest();
-  xhr.open('POST', serverUrl, true); // true = 异步
+  xhr.open('POST', serverUrl, true);
   xhr.setRequestHeader('Content-Type', 'application/json');
 
-  // 处理状态变更的回调 (ES5 风格)
+  // 处理状态变更的回调
   xhr.onreadystatechange = function() {
     
     // 4 = 请求已完成
     if (xhr.readyState === 4) {
       
-      // 2xx = 成功
+      // 2xx = 成功 (服务器已收到命令)
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           var data = JSON.parse(xhr.responseText);
-          console.log('服务器响应:', data);
+          console.log('服务器响应 (已开始加载):', data);
 
-          // 成功！
-          // 此时 gzserver 正在重启，gzweb 即将断开连接。
-          alert('服务器正在加载新世界 (' + worldFile + ')。\n\nGzWeb 即将断开连接。\n请在几秒钟后手动刷新页面以重新连接。');
+          // --- 自动刷新修改 ---
+          // 1. 在控制台打印消息，而不是弹窗
+          console.log('服务器正在加载新世界 (' + worldFile + ')。GzWeb 将在 10 秒后自动刷新。');
+          // (可选) 您可以在此处更新 UI，例如: $('#editMenu h3').text('正在加载...');
+
+          // --- BUG 修复 ---
+          // 2. 正确关闭 WebSocket (调用 .webSocket.close())
+          if (that.webSocket) {
+            that.webSocket.close();
+          }
           
-          // 使用保存的 'that' 来调用 disconnect
-          that.disconnect();
-
+          // 3. 设置 10 秒后自动刷新
+          // (这个延迟是为了给后端 C++ 留出充分的 Pgrep 和 ReInit() 时间)
+          setTimeout(function() {
+            location.reload(true); // true = 强制从服务器重新加载
+          }, 10000); // 10000 毫秒 = 10 秒
+          
         } catch (e) {
-          console.error('解析服务器响应失败:', e);
-          alert('加载新世界失败。\n错误: 解析服务器响应失败 (' + e.message + ')');
+          // --- 错误提示修复 ---
+          // 捕获到的是客户端错误 (例如 JSON 解析失败或 .webSocket.close 失败)
+          console.error('加载新世界时, 客户端处理响应失败:', e);
+          alert('加载新世界失败。\n客户端错误: ' + e.message + '\n\n请检查浏览器控制台。');
         }
       } else {
-        // HTTP 错误
+        // HTTP 错误 (例如 404, 500)
         console.error('加载新世界时出错: ' + xhr.status + ' ' + xhr.statusText);
-        alert('加载新世界失败。\n错误: ' + xhr.statusText + '\n\n请确保服务器后端已正确配置 /load_world 端点。');
+        alert('加载新世界失败。\n服务器错误: ' + xhr.statusText + '\n\n请确保 gzbridge (server.js) 正在运行。');
       }
     }
   };

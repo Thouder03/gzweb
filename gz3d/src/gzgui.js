@@ -992,7 +992,7 @@ GZ3D.Gui = function(scene)
     var worldFile = '~/my_world.sdf'; 
 
     // 向用户发出严重警告
-    if (confirm('这将终止当前服务器进程并加载新世界 (' + worldFile + ')。\n\nGzWeb 将断开连接，您需要手动刷新页面。\n\n是否继续？'))
+    if (confirm('这将终止当前服务器进程并加载新世界 (' + worldFile + ')。\n\nGzWeb 将断开连接，您需要手动刷新页面，或浏览器将于十秒后自动刷新\n\n是否继续？'))
     {
         that.emitter.emit('loadNewWorld', worldFile);
     }
