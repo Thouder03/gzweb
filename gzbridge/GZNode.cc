@@ -73,6 +73,8 @@ void GZNode::Init(Handle<Object> exports)
   NODE_SET_PROTOTYPE_METHOD(tpl, "getMessages", GetMessages);
 
   NODE_SET_PROTOTYPE_METHOD(tpl, "request", Request);
+  
+  NODE_SET_PROTOTYPE_METHOD(tpl, "loadWorld", LoadWorld);
 
   NODE_SET_PROTOTYPE_METHOD(tpl, "getIsGzServerConnected",
       GetIsGzServerConnected);
@@ -289,6 +291,33 @@ void GZNode::GetPoseMsgFilterMinimumAge(const
 void InitAll(Handle<Object> exports)
 {
   GZNode::Init(exports);
+}
+
+/////////////////////////////////////////////////
+void GZNode::LoadWorld(const FunctionCallbackInfo<Value>& args)
+{
+  Isolate* isolate = args.GetIsolate();
+
+  if (args.Length() < 1)
+  {
+    isolate->ThrowException(Exception::TypeError(
+        String::NewFromUtf8(isolate, "Wrong number of arguments. Expected 1 (worldFile)")));
+    return;
+  }
+
+  if (!args[0]->IsString())
+  {
+    isolate->ThrowException(Exception::TypeError(
+        String::NewFromUtf8(isolate, "Wrong argument type. String expected.")));
+    return;
+  }
+
+  GZNode* obj = ObjectWrap::Unwrap<GZNode>(args.This());
+
+  String::Utf8Value worldFile(args[0]->ToString());
+  obj->gzIface->LoadWorld(std::string(*worldFile));
+
+  return;
 }
 
 /////////////////////////////////////////////////

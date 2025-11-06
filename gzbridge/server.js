@@ -36,7 +36,7 @@ let materialScriptsMessage = {};
 let isConnected = false;
 
 /**
- * Callback to serve static files
+ * Callback to serve static files AND handle API requests
  * @param req Request
  * @param res Response
  */
@@ -45,8 +45,46 @@ let staticServe = function(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Request-Method', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET');
+  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST'); // 允许 POST
   res.setHeader('Access-Control-Allow-Headers', '*');
+ 
+  // 处理预检 OPTIONS 请求 (CORS)
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // API 端点：用于加载新 world
+  if (req.url === '/load_world' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString(); // 将 Buffer 转换为字符串
+    });
+    req.on('end', () => {
+      try {
+        const postData = JSON.parse(body);
+        if (postData.world) {
+          console.log(new Date() + ' Received request to load world: ' + postData.world);
+          
+          // 调用我们即将添加到 GZNode C++ 插件中的新函数
+          gzNode.loadWorld(postData.world); 
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'ok', message: 'Load world command issued for ' + postData.world }));
+        } else {
+          throw new Error('Missing "world" key in JSON body');
+        }
+      } catch (e) {
+        console.error('Failed to parse /load_world request:', e.message);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error', message: e.message }));
+      }
+    });
+    return; // 不再继续处理静态文件
+  }
+
+  // --- 原有的静态文件服务逻辑 ---
 
   let fileLoc = path.resolve(staticBasePath);
 
@@ -57,15 +95,30 @@ let staticServe = function(req, res) {
 
   fs.readFile(fileLoc, function(err, data) {
     if (err) {
-        res.writeHead(404, 'Not Found');
-        res.write('404: File Not Found!');
-        return res.end();
+        res.writeHead(404, {'Content-Type': 'text/plain'});
+        res.write('404 Not Found\n');
+        res.end();
+        console.log('404: ' + fileLoc);
+        return;
     }
 
-    res.statusCode = 200;
+    let headers = {};
+    let ext = path.extname(fileLoc);
+    if (ext === '.js')
+        headers['Content-Type'] = 'application/javascript';
+    else if (ext === '.css')
+        headers['Content-Type'] = 'text/css';
+    else if (ext === '.html')
+        headers['Content-Type'] = 'text/html';
+    else if (ext === '.png')
+        headers['Content-Type'] = 'image/png';
+    else if (ext === '.ico')
+        headers['Content-Type'] = 'image/x-icon';
+    // ... 可根据需要添加其他 mime 类型 ...
 
+    res.writeHead(200, headers);
     res.write(data);
-    return res.end();
+    res.end();
   });
 };
 

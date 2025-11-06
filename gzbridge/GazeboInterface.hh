@@ -46,6 +46,12 @@ namespace gzweb
     /// \brief Initialize gazebo interface.
     public: void Init();
 
+    /// \brief Re-initialize gazebo transport interface after disconnect
+    public: void ReInit();
+
+    /// \brief Load a new world by killing and restarting gzserver.
+    public: void LoadWorld(const std::string &_worldFile);
+
     /// \brief Run the gazebo interface in a thread.
     public: void RunThread();
 
@@ -457,6 +463,19 @@ namespace gzweb
 
     /// \brief True if there is a client connection.
     private: bool isConnected = false;
+
+    /// \brief 互斥锁，用于保护 newServerStarted 标志
+    private: std::mutex newServerMutex;
+    /// \brief 条件变量，用于等待新 gzserver 启动
+    private: std::condition_variable newServerCondition;
+    /// \brief 标志位，指示新的 gzserver 是否已启动并发送了第一个消息
+    private: bool newServerStarted = false;
+    
+// 在 public: 访问修饰符下添加以下两个函数声明：
+    /// \brief 设置新服务器的连接状态并发送通知
+    public: void SetNewServerStarted(bool _started);
+    /// \brief 阻塞等待新 gzserver 启动（带超时）
+    public: void WaitForNewServer();
 
     public: void SetPoseFilterMinimumDistanceSquared(double _m);
     public: double GetPoseFilterMinimumDistanceSquared();

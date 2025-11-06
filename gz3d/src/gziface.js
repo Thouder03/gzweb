@@ -615,6 +615,11 @@ GZ3D.GZIface.prototype.onConnected = function()
 
   this.emitter.on('entityCreated', publishFactory);
 
+  this.emitter.on('loadNewWorld', function(worldFile)
+  {
+    that.loadNewWorld(worldFile);
+  });
+
   this.emitter.on('reset',
       function(resetType)
       {
@@ -1234,7 +1239,65 @@ GZ3D.GZIface.prototype.parseMaterial = function(material)
       scale: scale
   };
 };
+/**
+ * 向后端服务器发送请求，要求加载一个新的 world 文件。(ES5 兼容版本)
+ * 这依赖于一个自定义的后端 HTTP 端点 /load_world 来执行实际的 shell 命令。
+ * @param {string} worldFile - 要加载的 world 文件名 (例如 'my_world.sdf')
+ */
+GZ3D.GZIface.prototype.loadNewWorld = function(worldFile)
+{
+  // 保存 'this' 上下文，因为在 XMLHttpRequest 的回调函数中 'this' 会改变
+  var that = this;
 
+  console.log('Requesting server to load new world: ' + worldFile);
+
+  // 假设后端端点是 http://[server-url]/load_world
+  var serverUrl = 'http://' + this.url + '/load_world';
+  
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', serverUrl, true); // true = 异步
+  xhr.setRequestHeader('Content-Type', 'application/json');
+
+  // 处理状态变更的回调 (ES5 风格)
+  xhr.onreadystatechange = function() {
+    
+    // 4 = 请求已完成
+    if (xhr.readyState === 4) {
+      
+      // 2xx = 成功
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          console.log('服务器响应:', data);
+
+          // 成功！
+          // 此时 gzserver 正在重启，gzweb 即将断开连接。
+          alert('服务器正在加载新世界 (' + worldFile + ')。\n\nGzWeb 即将断开连接。\n请在几秒钟后手动刷新页面以重新连接。');
+          
+          // 使用保存的 'that' 来调用 disconnect
+          that.disconnect();
+
+        } catch (e) {
+          console.error('解析服务器响应失败:', e);
+          alert('加载新世界失败。\n错误: 解析服务器响应失败 (' + e.message + ')');
+        }
+      } else {
+        // HTTP 错误
+        console.error('加载新世界时出错: ' + xhr.status + ' ' + xhr.statusText);
+        alert('加载新世界失败。\n错误: ' + xhr.statusText + '\n\n请确保服务器后端已正确配置 /load_world 端点。');
+      }
+    }
+  };
+
+  // 处理网络错误 (例如服务器无法访问)
+  xhr.onerror = function() {
+    console.error('加载新世界时出错: Network Error');
+    alert('加载新世界失败。\n错误: Network Error\n\n请确保 gzbridge 服务器 (server.js) 正在运行。');
+  };
+
+  var body = JSON.stringify({ world: worldFile });
+  xhr.send(body);
+};
 /*GZ3D.GZIface.prototype.createGeom = function(geom, material, parent)
 {
   var obj;

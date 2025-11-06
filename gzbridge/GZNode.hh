@@ -69,6 +69,9 @@ namespace gzweb
 
     private: static void Request(const FunctionCallbackInfo<Value>& args);
 
+    private: static void LoadWorld(
+        const FunctionCallbackInfo<Value>& args);
+
     private: static void SetPoseMsgFilterMinimumAge(
         const FunctionCallbackInfo<Value>& args);
 

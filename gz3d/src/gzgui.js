@@ -985,6 +985,19 @@ GZ3D.Gui = function(scene)
       }
   );
 
+    $('#loadNewWorld').click(function()
+  {
+    // 触发一个新事件，由 GZIface 处理
+    // 我们硬编码 'my_world.sdf' 作为示例
+    var worldFile = '~/my_world.sdf'; 
+
+    // 向用户发出严重警告
+    if (confirm('这将终止当前服务器进程并加载新世界 (' + worldFile + ')。\n\nGzWeb 将断开连接，您需要手动刷新页面。\n\n是否继续？'))
+    {
+        that.emitter.emit('loadNewWorld', worldFile);
+    }
+  });
+
   this.emitter.on('reset', function(resetType)
       {
         if (resetType === 'world')

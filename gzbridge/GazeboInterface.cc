@@ -14,7 +14,10 @@
  * limitations under the License.
  *
 */
-
+#include <cstdlib> // 用于 system()
+#include <thread>   // 用于 std::thread
+#include <iostream> // 用于 std::cerr (线程安全的日志记录)
+#include <chrono>   // 用于 std::this_thread::sleep_for
 #include <gazebo/gazebo_config.h>
 
 #include "pb2json.hh"
@@ -186,6 +189,112 @@ void GazeboInterface::Init()
 {
   this->requestPub->WaitForConnection();
 }
+
+/////////////////////////////////////////////////
+void GazeboInterface::ReInit()
+{
+  std::cerr << "[GZBridge] Re-initializing Gazebo transport connection..."
+            << std::endl;
+
+  // 1. 终止旧的 Gazebo Transport 连接
+  // 必须先调用 fini() 来安全地关闭所有订阅/发布和内部线程
+  gazebo::transport::fini();
+
+  // 2. 重新初始化 Gazebo Transport
+  if (!gazebo::transport::init())
+  {
+    // 如果初始化失败，记录错误并返回
+    std::cerr << "[GZBridge] ERROR: Failed to re-initialize Gazebo transport."
+              << std::endl;
+    return;
+  }
+  
+  // 3. 运行 Transport 循环（通常是必需的）
+  gazebo::transport::run();
+
+  // 4. 重新初始化 GZBridge 的内部组件
+  // 重新创建节点并重新订阅/发布所有主题
+  this->node.reset(new gazebo::transport::Node());
+  this->node->Init();
+
+  // 重新执行 Init() 中的订阅/发布逻辑
+  this->sensorSub = this->node->Subscribe(this->sensorTopic,
+      &GazeboInterface::OnSensorMsg, this, true);
+
+  this->visSub = this->node->Subscribe(this->visualTopic,
+      &GazeboInterface::OnVisualMsg, this);
+
+  this->jointSub = this->node->Subscribe(this->jointTopic,
+      &GazeboInterface::OnJointMsg, this);
+
+  // For entity creation
+  this->modelInfoSub = node->Subscribe(this->modelTopic,
+      &GazeboInterface::OnModelMsg, this);
+
+  // For entity update
+  this->poseSub = this->node->Subscribe(this->poseTopic,
+      &GazeboInterface::OnPoseMsg, this);
+
+  // For entity delete coming from the server side
+  this->requestSub = this->node->Subscribe(this->requestTopic,
+      &GazeboInterface::OnRequest, this);
+
+  // For lights
+  this->lightFactorySub = this->node->Subscribe(this->lightFactoryTopic,
+      &GazeboInterface::OnLightFactoryMsg, this);
+  this->lightModifySub = this->node->Subscribe(this->lightModifyTopic,
+      &GazeboInterface::OnLightModifyMsg, this);
+
+  this->sceneSub = this->node->Subscribe(this->sceneTopic,
+      &GazeboInterface::OnScene, this);
+
+  this->physicsSub = this->node->Subscribe(this->physicsTopic,
+      &GazeboInterface::OnPhysicsMsg, this);
+
+  this->statsSub = this->node->Subscribe(this->statsTopic,
+      &GazeboInterface::OnStats, this);
+
+  this->roadSub = this->node->Subscribe(this->roadTopic,
+      &GazeboInterface::OnRoad, this, true);
+      
+  // For getting scene info on connect
+  this->requestPub =
+      this->node->Advertise<gazebo::msgs::Request>(this->requestTopic);
+
+  // For modifying models
+  this->modelPub =
+      this->node->Advertise<gazebo::msgs::Model>(this->modelModifyTopic);
+
+  // For modifying lights
+  this->lightModifyPub =
+      this->node->Advertise<gazebo::msgs::Light>(this->lightModifyTopic);
+
+  // For spawning models
+  this->factoryPub =
+      this->node->Advertise<gazebo::msgs::Factory>(this->factoryTopic);
+
+  // For spawning lights
+  this->lightFactoryPub =
+      this->node->Advertise<gazebo::msgs::Light>(this->lightFactoryTopic);
+
+  // For controlling world
+  this->worldControlPub =
+      this->node->Advertise<gazebo::msgs::WorldControl>(
+      this->worldControlTopic);
+
+  // For controlling playback
+  this->playbackControlPub =
+      this->node->Advertise<gazebo::msgs::LogPlaybackControl>(
+      this->playbackControlTopic);
+
+  this->responseSub = this->node->Subscribe("~/response",
+      &GazeboInterface::OnResponse, this);
+
+  std::cerr << "[GZBridge] Gazebo transport re-initialized successfully."
+            << std::endl;
+}
+
+// 确保在 GZNode 析构函数中也调用 gazebo::transport::fini()，但您在 GZNode.cc 中已经有了。
 
 /////////////////////////////////////////////////
 void GazeboInterface::RunThread()
@@ -1196,4 +1305,117 @@ void GazeboInterface::SetPoseFilterMinimumMsgAge(double _m)
 double GazeboInterface::GetPoseFilterMinimumMsgAge()
 {
   return this->minimumMsgAge;
+}
+
+/////////////////////////////////////////////////
+/// \brief 辅助函数：在分离的线程中运行系统命令以避免阻塞
+void RunSystemCommand(std::string _cmd)
+{
+  // 在新线程中运行，以避免阻塞 Node.js 的主事件循环
+  std::thread t([_cmd]()
+  {
+    std::cerr << "[GZBridge] Executing: " << _cmd << std::endl;
+    int ret = std::system(_cmd.c_str());
+    if (ret != 0)
+    {
+      std::cerr << "[GZBridge] Command failed with return code " << ret << ": " << _cmd << std::endl;
+    }
+    else
+    {
+      std::cerr << "[GZBridge] Command successful: " << _cmd << std::endl;
+    }
+  });
+  t.detach(); // 分离线程，让它独立运行
+}
+
+/////////////////////////////////////////////////
+/// \brief Helper function to check if the gzserver process is running.
+/// \return True if gzserver is found, false otherwise.
+bool IsGazeboRunning()
+{
+  // 使用 pgrep 检查名为 'gzserver' 的进程。
+  // `std::system` 返回命令的退出状态。0 表示找到进程。
+  // 我们将 pgrep 的输出重定向到 /dev/null 来保持日志干净。
+  // 注意：这依赖于 Linux 环境和 pgrep 命令。
+  int ret = std::system("pgrep gzserver > /dev/null 2>&1");
+  return ret == 0;
+}
+
+/////////////////////////////////////////////////
+void GazeboInterface::LoadWorld(const std::string &_worldFile)
+{
+  // 1. 杀死现有的 gzserver 进程
+  // 使用 -9 确保旧进程立即终止，防止冲突
+  std::string killCmd = "killall -9 gzserver";
+  RunSystemCommand(killCmd); 
+
+  // 给 kill 命令和系统一点时间来清理进程表
+  std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
+
+  // 2. 启动新的 gzserver
+  // 假设 'gazebo' 启动了 gzserver 进程
+  std::string launchCmd = "gazebo " + _worldFile;
+  std::cerr << "[GZBridge] Launching new world: " << launchCmd << std::endl;
+  RunSystemCommand(launchCmd);
+
+  // 3. 轮询等待新的 gzserver 进程出现 (最多 20 秒)
+  int maxWaitSeconds = 20;
+  bool processFound = false;
+  std::cerr << "[GZBridge] Waiting for new gzserver process to start (Max " << maxWaitSeconds << "s)..." << std::endl;
+
+  // 循环等待，每 500ms 检查一次
+  for (int i = 0; i < maxWaitSeconds * 2; ++i) 
+  {
+      if (IsGazeboRunning())
+      {
+          processFound = true;
+          std::cerr << "[GZBridge] New gzserver process detected." << std::endl;
+          break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+
+  if (!processFound)
+  {
+      std::cerr << "[GZBridge] ERROR: gzserver process not detected after " << maxWaitSeconds << " seconds. Attempting ReInit anyway." << std::endl;
+      // 即使检测失败，仍然尝试 ReInit，以防 pgrep 命令不适用或启动方式特殊。
+  }
+  else
+  {
+      // 进程已启动，再多等 2 秒，给 Gazebo Transport 栈启动的时间，这是 ReInit 成功的前提。
+      std::cerr << "[GZBridge] Waiting an extra 2 seconds for transport initialization..." << std::endl;
+      std::this_thread::sleep_for(std::chrono::seconds(2));
+  }
+  
+  // 4. 强制 GZBridge 重新初始化其 Gazebo Transport 连接
+  this->ReInit(); 
+}
+
+/////////////////////////////////////////////////
+void GazeboInterface::SetNewServerStarted(bool _started)
+{
+  std::lock_guard<std::mutex> lock(this->newServerMutex);
+  this->newServerStarted = _started;
+  if (_started)
+  {
+    // 只有在新服务器启动时才通知等待线程
+    this->newServerCondition.notify_all();
+  }
+}
+
+/////////////////////////////////////////////////
+void GazeboInterface::WaitForNewServer()
+{
+  std::unique_lock<std::mutex> lock(this->newServerMutex);
+  std::cerr << "[GZBridge] Waiting for new gzserver connection (Max 20s)..."
+            << std::endl;
+
+  // 使用 wait_for 实现带 20 秒超时的等待
+  if (!this->newServerCondition.wait_for(lock,
+      std::chrono::seconds(20),
+      [this]{ return this->newServerStarted; }))
+  {
+      std::cerr << "[GZBridge] WARNING: New gzserver did not connect within 20 seconds. Proceeding with ReInit anyway."
+                << std::endl;
+  }
 }

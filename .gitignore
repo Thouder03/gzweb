@@ -1,2 +1,5 @@
-http\client\assets\
-node_modules\
+http/
+node_modules/
+http/client/style/
+gzbridge/build/
+build/
