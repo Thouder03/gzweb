@@ -1308,6 +1308,67 @@ GZ3D.GZIface.prototype.loadNewWorld = function(worldFile)
   var body = JSON.stringify({ world: worldFile });
   xhr.send(body);
 };
+
+/**
+ * 向服务器发送请求，加载指定文件的内容
+ * @param {string} filePath - 文件路径
+ * @param {function} callback - 成功回调函数
+ */
+GZ3D.GZIface.prototype.loadCodeFile = function(filePath, callback)
+{
+    var serverUrl = 'http://' + this.url + '/code_editor';
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', serverUrl, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                callback(null, xhr.responseText); // 成功返回文件内容
+            } else {
+                callback('Error loading file: ' + xhr.statusText, null);
+            }
+        }
+    };
+    xhr.onerror = function() {
+        callback('Network error during file load.', null);
+    };
+
+    var body = JSON.stringify({ action: 'load', path: filePath });
+    xhr.send(body);
+};
+
+/**
+ * 向服务器发送请求，保存内容到指定文件
+ * @param {string} filePath - 文件路径
+ * @param {string} content - 文件内容
+ * @param {function} callback - 完成回调函数
+ */
+GZ3D.GZIface.prototype.saveCodeFile = function(filePath, content, callback)
+{
+    var serverUrl = 'http://' + this.url + '/code_editor';
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', serverUrl, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                callback(null, 'Success'); // 成功
+            } else {
+                callback('Error saving file: ' + xhr.statusText, null);
+            }
+        }
+    };
+    xhr.onerror = function() {
+        callback('Network error during file save.', null);
+    };
+
+    var body = JSON.stringify({ action: 'save', path: filePath, content: content });
+    xhr.send(body);
+};
+
+
 /*GZ3D.GZIface.prototype.createGeom = function(geom, material, parent)
 {
   var obj;

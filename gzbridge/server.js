@@ -55,30 +55,91 @@ let staticServe = function(req, res) {
     return;
   }
 
-  // API 端点：用于加载新 world
-  if (req.url === '/load_world' && req.method === 'POST') {
+  // 处理 POST 请求
+  if (req.method === 'POST') {
     let body = '';
     req.on('data', chunk => {
-      body += chunk.toString(); // 将 Buffer 转换为字符串
+      body += chunk.toString();
     });
+
     req.on('end', () => {
-      try {
-        const postData = JSON.parse(body);
-        if (postData.world) {
-          console.log(new Date() + ' Received request to load world: ' + postData.world);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      // --- 新增的代码编辑器路由 ---
+      if (req.url === '/code_editor') {
+        try {
+          const data = JSON.parse(body);
+          const action = data.action;
+          const filePath = data.path;
           
-          // 调用我们即将添加到 GZNode C++ 插件中的新函数
-          gzNode.loadWorld(postData.world); 
-          
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ status: 'ok', message: 'Load world command issued for ' + postData.world }));
-        } else {
-          throw new Error('Missing "world" key in JSON body');
+          // 绝对路径检查，防止目录遍历攻击 (非常重要)
+          const absolutePath = path.join(staticBasePath, '..', filePath);
+          if (absolutePath.indexOf(path.join(staticBasePath, '..')) !== 0) {
+              console.error('Security violation: Attempted path traversal for:', filePath);
+              res.writeHead(403, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid file path.' }));
+              return;
+          }
+
+          if (action === 'load') {
+            fs.readFile(absolutePath, 'utf8', (err, content) => {
+              if (err) {
+                console.error('Error reading file:', absolutePath, err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: err.message }));
+              } else {
+                res.writeHead(200, { 'Content-Type': 'text/plain' });
+                res.end(content); // 返回纯文本内容
+              }
+            });
+          } 
+          else if (action === 'save') {
+            const content = data.content || '';
+            fs.writeFile(absolutePath, content, 'utf8', (err) => {
+              if (err) {
+                console.error('Error writing file:', absolutePath, err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: err.message }));
+              } else {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ status: 'saved' }));
+              }
+            });
+          }
+          else {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid action.' }));
+          }
+        } catch (e) {
+          console.error('JSON Parse Error:', e);
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid JSON.' }));
         }
-      } catch (e) {
-        console.error('Failed to parse /load_world request:', e.message);
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'error', message: e.message }));
+        return; // 结束 /code_editor 路由处理
+      }
+      // --- 结束新增的代码编辑器路由 ---
+
+    // API 端点：用于加载新 world
+    if (req.url === '/load_world') {
+        try {
+          const postData = JSON.parse(body);
+          if (postData.world) {
+            console.log(new Date() + ' Received request to load world: ' + postData.world);
+            
+            // 调用我们即将添加到 GZNode C++ 插件中的新函数
+            gzNode.loadWorld(postData.world); 
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'ok', message: 'Load world command issued for ' + postData.world }));
+          } else {
+            throw new Error('Missing "world" key in JSON body');
+          }
+        } catch (e) {
+          console.error('Failed to parse /load_world request:', e.message);
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'error', message: e.message }));
+        }
       }
     });
     return; // 不再继续处理静态文件

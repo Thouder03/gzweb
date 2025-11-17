@@ -48,6 +48,35 @@
                     <li id='toggle-notifications' data-icon="false" data-iconpos="right" style="border: none !important;"><a href="#"><span class="collapsible_item">Notifications</span></a></li>
                   </ul>
               </div>
+              <div id='codeEditorMenu' data-role="collapsible" data-inset="false" data-iconpos="left" data-collapsed-icon="carat-r" data-expanded-icon="carat-d">
+                <h3><span class="collapsible_header">Code Editor</span></h3>
+                <ul>
+                  <li id='openCodeEditor'><a href="#">Open Code Editor</a></li>
+                </ul>
+              </div>
+
+              <div data-role="popup" id="codeEditorPopup" data-theme="a" data-dismissible="false" style="max-width:400px; padding: 10px;">
+                <div data-role="header" data-theme="b">
+                  <h1>Edit Code File</h1>
+                </div>
+                <div role="main" class="ui-content">
+                  <label for="codeFilePath">File Path:</label>
+                  <input type="text" name="codeFilePath" id="codeFilePath" value="assets/scripts/my_script.js">
+                  
+                  <label for="codeContent">Code Content:</label>
+                  <textarea cols="40" rows="10" name="codeContent" id="codeContent" placeholder="Enter your code here..."></textarea>
+                  
+                  <div class="ui-grid-a">
+                    <div class="ui-block-a">
+                      <button id="loadCodeBtn" class="ui-btn ui-corner-all ui-btn-b">Load</button>
+                    </div>
+                    <div class="ui-block-b">
+                      <button id="saveCodeBtn" class="ui-btn ui-corner-all ui-btn-b">Save</button>
+                    </div>
+                  </div>
+                  <p id="codeEditorStatus" style="color: green;"></p>
+                </div>
+              </div>
             </ul>
           </div>
         </div>
@@ -1119,6 +1148,49 @@
         scene.setSize(window.innerWidth, window.innerHeight);
 
         window.addEventListener('keydown', scene.onKeyDown, false);
+        
+
+        $(document).on('pagecreate', function() {
+          
+          // 监听 'Open Code Editor' 菜单项的点击事件
+          $('#openCodeEditor').on('click', function(e) {
+            e.preventDefault();
+            $('#codeEditorPopup').popup('open'); // 打开弹出框
+          });
+
+          // --- 加载按钮事件 ---
+          $('#loadCodeBtn').on('click', function() {
+            var filePath = $('#codeFilePath').val();
+            $('#codeEditorStatus').text('Loading...');
+            
+            // 调用 GZIface 的方法发送请求
+            iface.loadCodeFile(filePath, function(error, content) {
+              if (error) {
+                $('#codeEditorStatus').text('Load Failed: ' + error).css('color', 'red');
+                $('#codeContent').val('');
+              } else {
+                $('#codeContent').val(content);
+                $('#codeEditorStatus').text('File loaded successfully.').css('color', 'green');
+              }
+            });
+          });
+
+          // --- 保存按钮事件 ---
+          $('#saveCodeBtn').on('click', function() {
+            var filePath = $('#codeFilePath').val();
+            var content = $('#codeContent').val();
+            $('#codeEditorStatus').text('Saving...');
+
+            // 调用 GZIface 的方法发送请求
+            iface.saveCodeFile(filePath, content, function(error) {
+              if (error) {
+                $('#codeEditorStatus').text('Save Failed: ' + error).css('color', 'red');
+              } else {
+                $('#codeEditorStatus').text('File saved successfully.').css('color', 'green');
+              }
+            });
+          });
+        });
       }
 
       function onWindowResize()
