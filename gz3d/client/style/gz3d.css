@@ -821,41 +821,59 @@ input[type=number]::-webkit-inner-spin-button
     position: fixed; /* 使其可移动 */
     top: 50px;
     left: 50%;
-    transform: translateX(-50%); /* 初始居中 */
     z-index: 1000; /* 确保在其他元素之上 */
-    background: #333; /* 与主题 B 颜色匹配 */
+    background: #333;
     border: 1px solid #ddd;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-    min-width: 400px; /* 最小宽度 */
-    min-height: 300px; /* 最小高度 */
+    
+    /* 核心修复 1: 设定固定的初始尺寸，防止尺寸变化 */
+    width: 600px; 
+    height: 500px;
+    min-width: 400px; /* 保持最小尺寸限制 */
+    min-height: 300px; 
+    
     /* 允许通过 CSS 调整大小 */
     resize: both; 
     overflow: auto; /* 溢出时显示滚动条 */
+    
+    /* 使用 Flexbox 布局，将内容垂直堆叠 */
+    display: flex;
+    flex-direction: column;
 }
 
 /* 拖动句柄样式 */
 #codeEditorHeader {
+    /* 确保标题栏不被压缩 */
+    flex-shrink: 0; 
     cursor: move;
-    user-select: none; /* 防止拖动时选中文本 */
+    user-select: none; 
     padding: 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-#codeEditorHeader h1 {
-    margin: 0;
-    font-size: 1.2em;
-}
-
 /* 确保输入框和文本域占据可用空间 */
 .ui-content {
+    /* 核心修复 2: 内容区域占据所有剩余空间 */
+    flex-grow: 1; 
     display: flex;
-    flex-direction: column;
+    flex-direction: column; /* 内部元素垂直排列 */
+    padding: 10px;
+    /* 确保 padding 不影响 flexbox 尺寸计算 */
+    box-sizing: border-box; 
+    overflow: auto; /* 防止内容撑破容器 */
 }
 
 #codeContent {
-    flex-grow: 1; /* 允许文本域填充剩余空间 */
+    /* 核心修复 3: 文本域占据内容区域的剩余高度和全部宽度 */
+    flex-grow: 1; 
     width: 100%;
+    min-height: 100px; /* 确保有一个最小高度 */
     box-sizing: border-box; /* 确保 padding 不增加总宽度 */
+}
+
+/* 确保初始居中效果被禁用 (因为我们将用 JS 明确设置 left) */
+.code-editor-window[style*="transform: translateX(-50%)"] {
+    transform: none !important;
 }

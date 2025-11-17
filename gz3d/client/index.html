@@ -1162,9 +1162,19 @@
 
           // 1. 监听 'Open Code Editor' 菜单项的点击事件
           $('#openCodeEditor').on('click', function(e) {
-            e.preventDefault();
-            $editor.show(); // 使用 show() 显示窗口
-          });
+              e.preventDefault();
+              
+              var $editor = $('#codeEditorPopup');
+              
+              // 计算居中所需的 left 值
+              var initialLeft = (window.innerWidth - $editor.outerWidth()) / 2;
+              
+              $editor.css({
+                top: '50px', // 保持固定的顶部位置
+                left: initialLeft + 'px', // 设置显式的左侧位置
+                transform: 'none' // 禁用 CSS 转换，确保拖动稳定
+              }).show(); // 使用 show() 显示窗口
+            });
           
           // 2. 监听 '关闭' 按钮事件
           $('#closeCodeEditorBtn').on('click', function(e) {
@@ -1184,24 +1194,22 @@
             $header.css('cursor', 'grabbing');
             e.preventDefault();
           });
-
+          // 窗口拖动逻辑 (确保在拖动过程中 transform 保持 none)
           $(document).on('mousemove touchmove', function(e) {
-            if (!isDragging) return;
+              if (!isDragging) return;
 
-            var event = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
-            
-            // 计算新的窗口位置
-            var newLeft = event.clientX - offset.x;
-            var newTop = event.clientY - offset.y;
+              var event = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+              
+              var newLeft = event.clientX - offset.x;
+              var newTop = event.clientY - offset.y;
 
-            // 应用新的位置
-            $editor.css({
-              top: newTop,
-              left: newLeft,
-              transform: 'none' // 禁用初始居中的 CSS 转换
+              $editor.css({
+                top: newTop + 'px',
+                left: newLeft + 'px',
+                transform: 'none' // 关键：确保在拖动时始终禁用 CSS 转换
+              });
+              e.preventDefault();
             });
-            e.preventDefault();
-          });
 
           $(document).on('mouseup touchend', function() {
             if (isDragging) {
