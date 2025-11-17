@@ -1326,14 +1326,23 @@ GZ3D.GZIface.prototype.loadCodeFile = function(filePath, callback)
             if (xhr.status === 200) {
                 callback(null, xhr.responseText); // 成功返回文件内容
             } else {
-                callback('Error loading file: ' + xhr.statusText, null);
+                // --- 错误信息解析 (修复) ---
+                var errorMessage = xhr.statusText;
+                try {
+                    var responseJson = JSON.parse(xhr.responseText);
+                    // 如果服务器返回了具体的 error 字段，则使用它
+                    if (responseJson.error) {
+                        errorMessage = responseJson.error;
+                    }
+                } catch (e) {
+                    // 响应不是 JSON，或者 JSON 解析失败，则使用默认状态文本
+                }
+                callback('HTTP Error ' + xhr.status + ': ' + errorMessage, null);
+                // --- 错误信息解析 结束 ---
             }
         }
     };
-    xhr.onerror = function() {
-        callback('Network error during file load.', null);
-    };
-
+    // ... xhr.onerror 保持不变 ...
     var body = JSON.stringify({ action: 'load', path: filePath });
     xhr.send(body);
 };
@@ -1356,14 +1365,23 @@ GZ3D.GZIface.prototype.saveCodeFile = function(filePath, content, callback)
             if (xhr.status === 200) {
                 callback(null, 'Success'); // 成功
             } else {
-                callback('Error saving file: ' + xhr.statusText, null);
+                // --- 错误信息解析 (修复) ---
+                var errorMessage = xhr.statusText;
+                try {
+                    var responseJson = JSON.parse(xhr.responseText);
+                    // 如果服务器返回了具体的 error 字段，则使用它
+                    if (responseJson.error) {
+                        errorMessage = responseJson.error;
+                    }
+                } catch (e) {
+                    // 响应不是 JSON，或者 JSON 解析失败，则使用默认状态文本
+                }
+                callback('HTTP Error ' + xhr.status + ': ' + errorMessage, null);
+                // --- 错误信息解析 结束 ---
             }
         }
     };
-    xhr.onerror = function() {
-        callback('Network error during file save.', null);
-    };
-
+    // ... xhr.onerror 保持不变 ...
     var body = JSON.stringify({ action: 'save', path: filePath, content: content });
     xhr.send(body);
 };

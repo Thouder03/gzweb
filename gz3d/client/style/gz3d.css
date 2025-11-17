@@ -815,3 +815,47 @@ input[type=number]::-webkit-inner-spin-button
   width: 13px;
   height: 16px;
 }
+
+/* 自定义 CSS 样式 */
+.code-editor-window {
+    position: fixed; /* 使其可移动 */
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%); /* 初始居中 */
+    z-index: 1000; /* 确保在其他元素之上 */
+    background: #333; /* 与主题 B 颜色匹配 */
+    border: 1px solid #ddd;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    min-width: 400px; /* 最小宽度 */
+    min-height: 300px; /* 最小高度 */
+    /* 允许通过 CSS 调整大小 */
+    resize: both; 
+    overflow: auto; /* 溢出时显示滚动条 */
+}
+
+/* 拖动句柄样式 */
+#codeEditorHeader {
+    cursor: move;
+    user-select: none; /* 防止拖动时选中文本 */
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#codeEditorHeader h1 {
+    margin: 0;
+    font-size: 1.2em;
+}
+
+/* 确保输入框和文本域占据可用空间 */
+.ui-content {
+    display: flex;
+    flex-direction: column;
+}
+
+#codeContent {
+    flex-grow: 1; /* 允许文本域填充剩余空间 */
+    width: 100%;
+    box-sizing: border-box; /* 确保 padding 不增加总宽度 */
+}

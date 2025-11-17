@@ -55,16 +55,19 @@
                 </ul>
               </div>
 
-              <div data-role="popup" id="codeEditorPopup" data-theme="a" data-dismissible="false" style="max-width:400px; padding: 10px;">
-                <div data-role="header" data-theme="b">
+              <div id="codeEditorPopup" class="code-editor-window" data-theme="a" style="display: none;">
+                
+                <div id="codeEditorHeader" class="ui-bar ui-bar-b">
                   <h1>Edit Code File</h1>
+                  <a href="#" id="closeCodeEditorBtn" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-icon-delete ui-btn-icon-notext ui-btn-right" data-mini="true" title="Close">Close</a>
                 </div>
-                <div role="main" class="ui-content">
+                
+                <div role="main" class="ui-content" style="padding: 10px;">
                   <label for="codeFilePath">File Path:</label>
                   <input type="text" name="codeFilePath" id="codeFilePath" value="assets/scripts/my_script.js">
                   
                   <label for="codeContent">Code Content:</label>
-                  <textarea cols="40" rows="10" name="codeContent" id="codeContent" placeholder="Enter your code here..."></textarea>
+                  <textarea cols="80" rows="20" name="codeContent" id="codeContent" placeholder="Enter your code here..."></textarea>
                   
                   <div class="ui-grid-a">
                     <div class="ui-block-a">
@@ -1152,10 +1155,59 @@
 
         $(document).on('pagecreate', function() {
           
-          // 监听 'Open Code Editor' 菜单项的点击事件
+          var $editor = $('#codeEditorPopup');
+          var $header = $('#codeEditorHeader');
+          var isDragging = false;
+          var offset = { x: 0, y: 0 };
+
+          // 1. 监听 'Open Code Editor' 菜单项的点击事件
           $('#openCodeEditor').on('click', function(e) {
             e.preventDefault();
-            $('#codeEditorPopup').popup('open'); // 打开弹出框
+            $editor.show(); // 使用 show() 显示窗口
+          });
+          
+          // 2. 监听 '关闭' 按钮事件
+          $('#closeCodeEditorBtn').on('click', function(e) {
+            e.preventDefault();
+            $editor.hide(); // 使用 hide() 隐藏窗口
+          });
+          
+          // 3. 窗口拖动逻辑 (通过 jQuery 事件)
+          $header.on('mousedown touchstart', function(e) {
+            var event = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+            isDragging = true;
+            
+            // 计算点击点和窗口左上角的位置偏移
+            offset.x = event.clientX - $editor.offset().left;
+            offset.y = event.clientY - $editor.offset().top;
+            
+            $header.css('cursor', 'grabbing');
+            e.preventDefault();
+          });
+
+          $(document).on('mousemove touchmove', function(e) {
+            if (!isDragging) return;
+
+            var event = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+            
+            // 计算新的窗口位置
+            var newLeft = event.clientX - offset.x;
+            var newTop = event.clientY - offset.y;
+
+            // 应用新的位置
+            $editor.css({
+              top: newTop,
+              left: newLeft,
+              transform: 'none' // 禁用初始居中的 CSS 转换
+            });
+            e.preventDefault();
+          });
+
+          $(document).on('mouseup touchend', function() {
+            if (isDragging) {
+              isDragging = false;
+              $header.css('cursor', 'move');
+            }
           });
 
           // --- 加载按钮事件 ---
