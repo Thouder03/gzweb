@@ -78,6 +78,20 @@
                     </div>
                   </div>
                   <p id="codeEditorStatus" style="color: green;"></p>
+
+                  <hr>
+                  <h3>ROS Runner</h3>
+                  
+                  <label for="rosrunPackage">Package Name:</label>
+                  <input type="text" name="rosrunPackage" id="rosrunPackage" value="" placeholder="e.g., my_pkg_name">
+                  
+                  <label for="rosrunFile">File Name (Node):</label>
+                  <input type="text" name="rosrunFile" id="rosrunFile" value="" placeholder="e.g., my_node_name">
+                  
+                  <button id="runRosrunBtn" class="ui-btn ui-corner-all ui-btn-b">Execute rosrun</button>
+                  
+                  <p id="rosrunStatus" style="color: green;"></p>
+                  
                 </div>
               </div>
             </ul>
@@ -1250,6 +1264,29 @@
               }
             });
           });
+
+          // --- 新增：ROSRUN 按钮事件 ---
+          $('#runRosrunBtn').on('click', function() {
+            var pkg = $('#rosrunPackage').val();
+            var file = $('#rosrunFile').val();
+            
+            if (!pkg || !file) {
+              $('#rosrunStatus').text('Package and File Name are required.').css('color', 'red');
+              return;
+            }
+
+            $('#rosrunStatus').text('Executing: rosrun ' + pkg + ' ' + file + ' ...').css('color', 'blue');
+
+            // 调用 GZIface 的方法发送请求
+            iface.rosRun(pkg, file, function(error) {
+              if (error) {
+                $('#rosrunStatus').text('Failed: ' + error).css('color', 'red');
+              } else {
+                $('#rosrunStatus').text('Command executed successfully.').css('color', 'green');
+              }
+            });
+          });
+          
         });
       }
 

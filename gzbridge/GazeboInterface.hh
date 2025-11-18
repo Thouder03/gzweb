@@ -49,8 +49,13 @@ namespace gzweb
     /// \brief Re-initialize gazebo transport interface after disconnect
     public: void ReInit();
 
+    /*****************新增***************** */
     /// \brief Load a new world by killing and restarting gzserver.
     public: void LoadWorld(const std::string &_worldFile);
+
+    /// \brief Run a ROS node from a package and file.
+    public: void RosRun(const std::string &_package, const std::string &_file);
+    /************************************ */
 
     /// \brief Run the gazebo interface in a thread.
     public: void RunThread();

@@ -62,81 +62,108 @@ let staticServe = function(req, res) {
       body += chunk.toString();
     });
     req.on('end', () => {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-        if (req.url === '/code_editor') {
-          try {
-            const data = JSON.parse(body);
-            const action = data.action;
-            const filePath = data.path;
-            
-            // ------------------ 路径解析和安全检查 (修正版) ------------------
-            
-            // 1. 尝试找到 gzweb 项目的根目录
-            // 假设 staticBasePath = './../http/client' (标准 gzbridge 路径)
-            // 那么 path.resolve(staticBasePath, '..', '..') 应该能解析到 gzweb 根目录。
-            const rootDir = path.resolve(staticBasePath, '..', '..');
+      if (req.url === '/code_editor') {
+        try {
+          const data = JSON.parse(body);
+          const action = data.action;
+          const filePath = data.path;
+          
+          // ------------------ 路径解析和安全检查 (修正版) ------------------
+          
+          // 1. 尝试找到 gzweb 项目的根目录
+          // 假设 staticBasePath = './../http/client' (标准 gzbridge 路径)
+          // 那么 path.resolve(staticBasePath, '..', '..') 应该能解析到 gzweb 根目录。
+          const rootDir = path.resolve(staticBasePath, '..', '..');
 
-            // 2. 将用户路径解析为绝对路径
-            const absolutePath = path.resolve(rootDir, filePath);
-            
-            // 3. 安全检查：确保文件操作限制在 rootDir 及其子目录
-            if (!absolutePath.startsWith(rootDir)) {
-                console.error('Security violation: Attempted path traversal for:', filePath);
-                res.writeHead(403, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Invalid file path. Path must be inside project root.' }));
-                return;
-            }
-
-            // 4. 关键修复：确保父目录存在，否则写入文件会失败
-            const dir = path.dirname(absolutePath);
-            if (!fs.existsSync(dir)) {
-                // 使用 { recursive: true } 自动创建所有缺失的父目录
-                fs.mkdirSync(dir, { recursive: true });
-            }
-            
-            // ------------------ 文件操作逻辑 ------------------
-
-            if (action === 'load') {
-              fs.readFile(absolutePath, 'utf8', (err, content) => {
-                if (err) {
-                  console.error('Error reading file:', absolutePath, err);
-                  res.writeHead(500, { 'Content-Type': 'application/json' });
-                  // 返回具体的系统错误信息
-                  res.end(JSON.stringify({ error: 'System Error: ' + err.message })); 
-                } else {
-                  res.writeHead(200, { 'Content-Type': 'text/plain' });
-                  res.end(content);
-                }
-              });
-            } 
-            else if (action === 'save') {
-              const content = data.content || '';
-              
-              fs.writeFile(absolutePath, content, 'utf8', (err) => {
-                if (err) {
-                  console.error('Error writing file:', absolutePath, err);
-                  res.writeHead(500, { 'Content-Type': 'application/json' });
-                  // 返回具体的系统错误信息
-                  res.end(JSON.stringify({ error: 'System Error: ' + err.message }));
-                } else {
-                  res.writeHead(200, { 'Content-Type': 'application/json' });
-                  res.end(JSON.stringify({ status: 'saved' }));
-                }
-              });
-            }
-            else {
-              res.writeHead(400, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'Invalid action.' }));
-            }
-          } catch (e) {
-            console.error('Processing Error:', e);
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Server Processing Error: ' + e.message }));
+          // 2. 将用户路径解析为绝对路径
+          const absolutePath = path.resolve(rootDir, filePath);
+          
+          // 3. 安全检查：确保文件操作限制在 rootDir 及其子目录
+          if (!absolutePath.startsWith(rootDir)) {
+              console.error('Security violation: Attempted path traversal for:', filePath);
+              res.writeHead(403, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid file path. Path must be inside project root.' }));
+              return;
           }
-          return; 
+
+          // 4. 关键修复：确保父目录存在，否则写入文件会失败
+          const dir = path.dirname(absolutePath);
+          if (!fs.existsSync(dir)) {
+              // 使用 { recursive: true } 自动创建所有缺失的父目录
+              fs.mkdirSync(dir, { recursive: true });
+          }
+          
+          // ------------------ 文件操作逻辑 ------------------
+
+          if (action === 'load') {
+            fs.readFile(absolutePath, 'utf8', (err, content) => {
+              if (err) {
+                console.error('Error reading file:', absolutePath, err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                // 返回具体的系统错误信息
+                res.end(JSON.stringify({ error: 'System Error: ' + err.message })); 
+              } else {
+                res.writeHead(200, { 'Content-Type': 'text/plain' });
+                res.end(content);
+              }
+            });
+          } 
+          else if (action === 'save') {
+            const content = data.content || '';
+            
+            fs.writeFile(absolutePath, content, 'utf8', (err) => {
+              if (err) {
+                console.error('Error writing file:', absolutePath, err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                // 返回具体的系统错误信息
+                res.end(JSON.stringify({ error: 'System Error: ' + err.message }));
+              } else {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ status: 'saved' }));
+              }
+            });
+          }
+          else {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid action.' }));
+          }
+        } catch (e) {
+          console.error('Processing Error:', e);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Server Processing Error: ' + e.message }));
         }
+        return; 
+      }
+
+    // ********** 新增的 ROSRUN 路由 **********
+    if (req.url === '/rosrun') {
+      try {
+        const data = JSON.parse(body);
+        const pkg = data.package;
+        const file = data.file;
+
+        if (!pkg || !file) {
+          throw new Error('Missing "package" or "file" in JSON body');
+        }
+        
+        // 调用 C++ 插件的新函数
+        gzNode.rosRun(pkg, file); 
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', message: 'RosRun command issued.' }));
+        
+      } catch (e) {
+        console.error('Processing /rosrun Error:', e);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Processing Error: ' + e.message }));
+      }
+      return; // 结束 /rosrun 路由处理
+    }
+    // ********** 结束新增的 ROSRUN 路由 **********
+
     // API 端点：用于加载新 world
     if (req.url === '/load_world') {
         try {

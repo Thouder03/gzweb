@@ -18,6 +18,7 @@
 #include <thread>   // 用于 std::thread
 #include <iostream> // 用于 std::cerr (线程安全的日志记录)
 #include <chrono>   // 用于 std::this_thread::sleep_for
+#include <string>
 #include <gazebo/gazebo_config.h>
 
 #include "pb2json.hh"
@@ -1418,4 +1419,48 @@ void GazeboInterface::WaitForNewServer()
       std::cerr << "[GZBridge] WARNING: New gzserver did not connect within 20 seconds. Proceeding with ReInit anyway."
                 << std::endl;
   }
+}
+
+// 辅助函数，用于检查不安全的字符
+bool IsSafeInput(const std::string& input)
+{
+    // 不允许的字符：; & | $ ` ( ) < > \
+    // 允许：字母、数字、下划线、破折号、点
+    for (char c : input)
+    {
+        if (!isalnum(c) && c != '_' && c != '-' && c != '.')
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/////////////////////////////////////////////////
+void GazeboInterface::RosRun(const std::string &_package, const std::string &_file)
+{
+  // --- 基础安全检查 ---
+  // 检查包名和文件名是否包含危险字符
+  if (!IsSafeInput(_package) || !IsSafeInput(_file))
+  {
+      std::cerr << "[GZBridge] SECURITY ERROR: RosRun attempt with invalid characters." 
+                << " Package: [" << _package << "], File: [" << _file << "]" 
+                << std::endl;
+      return; // 中止执行
+  }
+  
+  //--- 检查 rosrun 是否存在 ---
+  if (std::system("command -v rosrun > /dev/null 2>&1") != 0)
+  {
+     std::cerr << "[GZBridge] ERROR: 'rosrun' command not found in PATH." << std::endl;
+     return;
+  }
+  
+  // 构造命令
+  std::string cmd = "rosrun " + _package + " " + _file;
+  
+  std::cerr << "[GZBridge] Executing RosRun command: " << cmd << std::endl;
+
+  // 使用之前定义的 RunSystemCommand 在分离线程中运行
+  RunSystemCommand(cmd);
 }

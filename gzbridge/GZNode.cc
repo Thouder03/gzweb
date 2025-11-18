@@ -73,8 +73,11 @@ void GZNode::Init(Handle<Object> exports)
   NODE_SET_PROTOTYPE_METHOD(tpl, "getMessages", GetMessages);
 
   NODE_SET_PROTOTYPE_METHOD(tpl, "request", Request);
-  
+
+  // ********** 新增的注册 **********
   NODE_SET_PROTOTYPE_METHOD(tpl, "loadWorld", LoadWorld);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "rosRun", RosRun);
+  // ****************************
 
   NODE_SET_PROTOTYPE_METHOD(tpl, "getIsGzServerConnected",
       GetIsGzServerConnected);
@@ -316,6 +319,36 @@ void GZNode::LoadWorld(const FunctionCallbackInfo<Value>& args)
 
   String::Utf8Value worldFile(args[0]->ToString());
   obj->gzIface->LoadWorld(std::string(*worldFile));
+
+  return;
+}
+
+/////////////////////////////////////////////////
+void GZNode::RosRun(const FunctionCallbackInfo<Value>& args)
+{
+  Isolate* isolate = args.GetIsolate();
+
+  if (args.Length() < 2)
+  {
+    isolate->ThrowException(Exception::TypeError(
+        String::NewFromUtf8(isolate, "Wrong number of arguments. Expected 2 (package, file)")));
+    return;
+  }
+
+  if (!args[0]->IsString() || !args[1]->IsString())
+  {
+    isolate->ThrowException(Exception::TypeError(
+        String::NewFromUtf8(isolate, "Wrong argument types. Strings expected.")));
+    return;
+  }
+
+  GZNode* obj = ObjectWrap::Unwrap<GZNode>(args.This());
+
+  String::Utf8Value pkg(args[0]->ToString());
+  String::Utf8Value file(args[1]->ToString());
+  
+  // 调用 GazeboInterface 中的实现
+  obj->gzIface->RosRun(std::string(*pkg), std::string(*file));
 
   return;
 }

@@ -1386,6 +1386,45 @@ GZ3D.GZIface.prototype.saveCodeFile = function(filePath, content, callback)
     xhr.send(body);
 };
 
+/**
+ * 向服务器发送请求，执行 rosrun 命令
+ * @param {string} packageName - 包名
+ * @param {string} fileName - 可执行文件名
+ * @param {function} callback - 完成回调函数
+ */
+GZ3D.GZIface.prototype.rosRun = function(packageName, fileName, callback)
+{
+    var serverUrl = 'http://' + this.url + '/rosrun';
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', serverUrl, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                callback(null, 'Success'); // 成功
+            } else {
+                // (复用之前的错误解析逻辑)
+                var errorMessage = xhr.statusText;
+                try {
+                    var responseJson = JSON.parse(xhr.responseText);
+                    if (responseJson.error) {
+                        errorMessage = responseJson.error;
+                    }
+                } catch (e) {
+                    // 响应不是 JSON
+                }
+                callback('HTTP Error ' + xhr.status + ': ' + errorMessage, null);
+            }
+        }
+    };
+    xhr.onerror = function() {
+        callback('Network error during rosrun request.', null);
+    };
+
+    var body = JSON.stringify({ package: packageName, file: fileName });
+    xhr.send(body);
+};
 
 /*GZ3D.GZIface.prototype.createGeom = function(geom, material, parent)
 {

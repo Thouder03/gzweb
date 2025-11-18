@@ -3,3 +3,4 @@ node_modules/
 http/client/style/
 gzbridge/build/
 build/
+.vscode/c_cpp_properties.json
