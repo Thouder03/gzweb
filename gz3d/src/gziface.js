@@ -1426,6 +1426,43 @@ GZ3D.GZIface.prototype.rosRun = function(packageName, fileName, callback)
     xhr.send(body);
 };
 
+/**
+ * 停止所有由 GzWeb 启动的 ROS 节点
+ */
+GZ3D.GZIface.prototype.rosStop = function(callback)
+{
+    var serverUrl = 'http://' + this.url + '/rosstop';
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', serverUrl, true);
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) 
+              {callback(null, 'Stopped');}
+            else 
+              {callback('Error', null);}
+        }
+    };
+    xhr.send();
+};
+
+/**
+ * 获取最新的 ROS 日志
+ */
+GZ3D.GZIface.prototype.getRosLogs = function(callback)
+{
+    var serverUrl = 'http://' + this.url + '/roslogs';
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', serverUrl, true);
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            callback(xhr.responseText);
+        }
+    };
+    xhr.send();
+};
+
 /*GZ3D.GZIface.prototype.createGeom = function(geom, material, parent)
 {
   var obj;

@@ -52,6 +52,7 @@
                 <h3><span class="collapsible_header">Code Editor</span></h3>
                 <ul>
                   <li id='openCodeEditor'><a href="#">Open Code Editor</a></li>
+                  <li id='openRosRunner'><a href="#">Open ROS Runner</a></li>
                 </ul>
               </div>
 
@@ -78,22 +79,46 @@
                     </div>
                   </div>
                   <p id="codeEditorStatus" style="color: green;"></p>
-
-                  <hr>
-                  <h3>ROS Runner</h3>
-                  
-                  <label for="rosrunPackage">Package Name:</label>
-                  <input type="text" name="rosrunPackage" id="rosrunPackage" value="" placeholder="e.g., my_pkg_name">
-                  
-                  <label for="rosrunFile">File Name (Node):</label>
-                  <input type="text" name="rosrunFile" id="rosrunFile" value="" placeholder="e.g., my_node_name">
-                  
-                  <button id="runRosrunBtn" class="ui-btn ui-corner-all ui-btn-b">Execute rosrun</button>
-                  
-                  <p id="rosrunStatus" style="color: green;"></p>
-                  
                 </div>
               </div>
+              
+              <div id="rosRunnerPopup" class="code-editor-window" style="display: none; height: 350px; width: 400px;">
+                <div id="rosRunnerHeader" class="ui-bar ui-bar-b" style="cursor: move; padding: 10px;">
+                  <h1 style="margin:0">ROS Runner</h1>
+                  <a href="#" id="closeRosRunnerBtn" class="ui-btn ui-corner-all ui-icon-delete ui-btn-icon-notext ui-btn-right" data-mini="true">Close</a>
+                </div>
+                
+                <div class="ui-content" style="padding: 15px; display: flex; flex-direction: column; height: calc(100% - 40px);">
+                  <label for="rosrunPackage">Package Name:</label>
+                  <input type="text" name="rosrunPackage" id="rosrunPackage" placeholder="e.g., roscpp_tutorials">
+                  
+                  <label for="rosrunFile">Node Name:</label>
+                  <input type="text" name="rosrunFile" id="rosrunFile" placeholder="e.g., talker">
+                  
+                  <div style="margin-top: 15px;">
+                    <button id="runRosrunBtn" class="ui-btn ui-corner-all ui-btn-b">Run Node</button>
+                    <button id="stopRosrunBtn" class="ui-btn ui-corner-all ui-btn-a" style="background-color: #8b0000; color: white; text-shadow: none;">Stop All Running</button>
+                    <button id="viewRosLogBtn" class="ui-btn ui-corner-all">View Output Logs</button>
+                  </div>
+                  
+                  <p id="rosrunStatus" style="color: green;"></p>
+                </div>
+              </div>
+
+              <div id="rosLogPopup" class="code-editor-window" style="display: none; height: 400px; width: 600px;">
+                <div id="rosLogHeader" class="ui-bar ui-bar-b" style="cursor: move; padding: 10px;">
+                  <h1 style="margin:0">ROS Terminal Output</h1>
+                  <a href="#" id="closeRosLogBtn" class="ui-btn ui-corner-all ui-icon-delete ui-btn-icon-notext ui-btn-right" data-mini="true">Close</a>
+                </div>
+                
+                <div class="ui-content" style="padding: 0; display: flex; flex-direction: column; height: calc(100% - 40px);">
+                  <div style="background: black; color: lime; font-family: monospace; padding: 10px; flex-grow: 1; overflow: auto; white-space: pre-wrap;" id="rosLogContent">
+                    Waiting for logs...
+                  </div>
+                  <button id="refreshLogBtn" class="ui-btn ui-btn-b" style="margin: 0;">Manual Refresh</button>
+                </div>
+              </div>
+
             </ul>
           </div>
         </div>
@@ -1166,7 +1191,7 @@
 
         window.addEventListener('keydown', scene.onKeyDown, false);
         
-
+        /**** 代码块开始：添加代码编辑器弹出窗口的功能 ****/
         $(document).on('pagecreate', function() {
           
           var $editor = $('#codeEditorPopup');
@@ -1265,29 +1290,94 @@
             });
           });
 
-          // --- 新增：ROSRUN 按钮事件 ---
-          $('#runRosrunBtn').on('click', function() {
-            var pkg = $('#rosrunPackage').val();
-            var file = $('#rosrunFile').val();
-            
-            if (!pkg || !file) {
-              $('#rosrunStatus').text('Package and File Name are required.').css('color', 'red');
-              return;
-            }
+         // --- 初始化通用窗口拖动逻辑 (可复用) ---
+          function makeDraggable($popup, $header) {
+              var isDragging = false;
+              var offset = { x: 0, y: 0 };
+              
+              $header.on('mousedown touchstart', function(e) {
+                  var event = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+                  isDragging = true;
+                  offset.x = event.clientX - $popup.offset().left;
+                  offset.y = event.clientY - $popup.offset().top;
+                  e.preventDefault();
+              });
+              
+              $(document).on('mousemove touchmove', function(e) {
+                  if (!isDragging) return;
+                  var event = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+                  $popup.css({
+                      top: (event.clientY - offset.y) + 'px',
+                      left: (event.clientX - offset.x) + 'px',
+                      transform: 'none'
+                  });
+              });
 
-            $('#rosrunStatus').text('Executing: rosrun ' + pkg + ' ' + file + ' ...').css('color', 'blue');
+              $(document).on('mouseup touchend', function() { isDragging = false; });
+          }
 
-            // 调用 GZIface 的方法发送请求
-            iface.rosRun(pkg, file, function(error) {
-              if (error) {
-                $('#rosrunStatus').text('Failed: ' + error).css('color', 'red');
-              } else {
-                $('#rosrunStatus').text('Command executed successfully.').css('color', 'green');
-              }
-            });
+          // --- ROS Runner 窗口逻辑 ---
+          var $runner = $('#rosRunnerPopup');
+          makeDraggable($runner, $('#rosRunnerHeader'));
+
+          $('#openRosRunner').on('click', function() {
+              $runner.css({top: '100px', left: '100px'}).show();
           });
-          
+          $('#closeRosRunnerBtn').on('click', function() { $runner.hide(); });
+
+          // Run 按钮
+          $('#runRosrunBtn').on('click', function() {
+              var pkg = $('#rosrunPackage').val();
+              var file = $('#rosrunFile').val();
+              $('#rosrunStatus').text('Launching...').css('color', 'blue');
+              iface.rosRun(pkg, file, function(err) {
+                  if(err) $('#rosrunStatus').text('Error: ' + err).css('color', 'red');
+                  else $('#rosrunStatus').text('Launched!').css('color', 'green');
+              });
+          });
+
+          // Stop 按钮
+          $('#stopRosrunBtn').on('click', function() {
+              iface.rosStop(function(err) {
+                  $('#rosrunStatus').text(err ? 'Stop Failed' : 'All Stopped').css('color', err ? 'red' : 'orange');
+              });
+          });
+
+          // --- ROS Log 窗口逻辑 ---
+          var $logger = $('#rosLogPopup');
+          var logInterval = null;
+          makeDraggable($logger, $('#rosLogHeader'));
+
+          $('#viewRosLogBtn').on('click', function() {
+              $logger.css({top: '150px', left: '300px'}).show();
+              startLogPolling();
+          });
+
+          $('#closeRosLogBtn').on('click', function() { 
+              $logger.hide(); 
+              stopLogPolling();
+          });
+
+          function fetchLogs() {
+              iface.getRosLogs(function(data) {
+                  var $content = $('#rosLogContent');
+                  $content.text(data || 'No logs yet...');
+                  $content.scrollTop($content[0].scrollHeight); // 自动滚动到底部
+              });
+          }
+
+          function startLogPolling() {
+              if (logInterval) clearInterval(logInterval);
+              fetchLogs(); // 立即获取一次
+              logInterval = setInterval(fetchLogs, 1000); // 每秒轮询一次
+          }
+
+          function stopLogPolling() {
+              if (logInterval) clearInterval(logInterval);
+          }
         });
+        /**** 代码块结束 ****/
+        
       }
 
       function onWindowResize()

@@ -71,6 +71,8 @@ namespace gzweb
 
     // ********** 新增的声明 **********
     private: static void RosRun(const FunctionCallbackInfo<Value>& args);
+    private: static void RosStop(const FunctionCallbackInfo<Value>& args);
+    private: static void GetRosLogs(const FunctionCallbackInfo<Value>& args);
     private: static void LoadWorld(
         const FunctionCallbackInfo<Value>& args);
     // ****************************     

@@ -77,6 +77,8 @@ void GZNode::Init(Handle<Object> exports)
   // ********** 新增的注册 **********
   NODE_SET_PROTOTYPE_METHOD(tpl, "loadWorld", LoadWorld);
   NODE_SET_PROTOTYPE_METHOD(tpl, "rosRun", RosRun);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "rosStop", RosStop);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "getRosLogs", GetRosLogs);
   // ****************************
 
   NODE_SET_PROTOTYPE_METHOD(tpl, "getIsGzServerConnected",
@@ -351,6 +353,19 @@ void GZNode::RosRun(const FunctionCallbackInfo<Value>& args)
   obj->gzIface->RosRun(std::string(*pkg), std::string(*file));
 
   return;
+}
+void GZNode::RosStop(const FunctionCallbackInfo<Value>& args)
+{
+    GZNode* obj = ObjectWrap::Unwrap<GZNode>(args.This());
+    obj->gzIface->RosStop();
+}
+
+void GZNode::GetRosLogs(const FunctionCallbackInfo<Value>& args)
+{
+    Isolate* isolate = args.GetIsolate();
+    GZNode* obj = ObjectWrap::Unwrap<GZNode>(args.This());
+    std::string logs = obj->gzIface->GetRosLogs();
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, logs.c_str()));
 }
 
 /////////////////////////////////////////////////

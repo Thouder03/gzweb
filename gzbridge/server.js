@@ -164,6 +164,13 @@ let staticServe = function(req, res) {
     }
     // ********** 结束新增的 ROSRUN 路由 **********
 
+    if (req.url === '/rosstop') { 
+        gzNode.rosStop(); // 调用 C++
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'stopped' }));
+        return;
+    }
+
     // API 端点：用于加载新 world
     if (req.url === '/load_world') {
         try {
@@ -187,6 +194,14 @@ let staticServe = function(req, res) {
       }
     });
     return; // 不再继续处理静态文件
+  }
+  
+  if (req.url === '/roslogs' && req.method === 'GET') {
+      // 调用 C++ 获取日志内容
+      const logs = gzNode.getRosLogs(); 
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end(logs);
+      return;
   }
 
   // --- 原有的静态文件服务逻辑 ---

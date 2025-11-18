@@ -18,7 +18,8 @@
 #include <thread>   // 用于 std::thread
 #include <iostream> // 用于 std::cerr (线程安全的日志记录)
 #include <chrono>   // 用于 std::this_thread::sleep_for
-#include <string>
+#include <cstdio>
+#include <fstream> // 用于读取日志文件
 #include <gazebo/gazebo_config.h>
 
 #include "pb2json.hh"
@@ -1424,7 +1425,7 @@ void GazeboInterface::WaitForNewServer()
 // 辅助函数，用于检查不安全的字符
 bool IsSafeInput(const std::string& input)
 {
-    // 不允许的字符：; & | $ ` ( ) < > \
+    // 不允许的字符：; & | $ ` ( ) < > "\"
     // 允许：字母、数字、下划线、破折号、点
     for (char c : input)
     {
@@ -1439,28 +1440,68 @@ bool IsSafeInput(const std::string& input)
 /////////////////////////////////////////////////
 void GazeboInterface::RosRun(const std::string &_package, const std::string &_file)
 {
-  // --- 基础安全检查 ---
-  // 检查包名和文件名是否包含危险字符
-  if (!IsSafeInput(_package) || !IsSafeInput(_file))
-  {
-      std::cerr << "[GZBridge] SECURITY ERROR: RosRun attempt with invalid characters." 
-                << " Package: [" << _package << "], File: [" << _file << "]" 
-                << std::endl;
-      return; // 中止执行
-  }
-  
-  //--- 检查 rosrun 是否存在 ---
-  if (std::system("command -v rosrun > /dev/null 2>&1") != 0)
-  {
-     std::cerr << "[GZBridge] ERROR: 'rosrun' command not found in PATH." << std::endl;
-     return;
-  }
-  
-  // 构造命令
-  std::string cmd = "rosrun " + _package + " " + _file;
-  
-  std::cerr << "[GZBridge] Executing RosRun command: " << cmd << std::endl;
+  if (!IsSafeInput(_package) || !IsSafeInput(_file)) return;
 
-  // 使用之前定义的 RunSystemCommand 在分离线程中运行
-  RunSystemCommand(cmd);
+  // 构造命令：
+  // 1. nohup: 防止终端关闭时进程退出
+  // 2. > logFile 2>&1: 将标准输出和错误重定向到日志文件
+  // 3. &: 在后台运行
+  // 4. echo $!: 打印进程 ID
+  std::string cmd = "nohup rosrun " + _package + " " + _file + " >> " + this->logFile + " 2>&1 & echo $!";
+  
+  std::cerr << "[GZBridge] Running: " << cmd << std::endl;
+
+  // 使用 popen 读取命令的输出（这里是 PID）
+  FILE *fp = popen(cmd.c_str(), "r");
+  if (fp == NULL) {
+      std::cerr << "Failed to run command" << std::endl;
+      return;
+  }
+
+  char path[1035];
+  if (fgets(path, sizeof(path), fp) != NULL) {
+      int pid = atoi(path);
+      if (pid > 0) {
+          this->runningPids.push_back(pid);
+          std::cerr << "[GZBridge] Started process with PID: " << pid << std::endl;
+      }
+  }
+  pclose(fp);
+}
+
+void GazeboInterface::RosStop()
+{
+  std::cerr << "[GZBridge] Stopping all recorded ROS processes..." << std::endl;
+
+  for (int pid : this->runningPids) {
+      std::string killCmd = "kill -9 " + std::to_string(pid);
+      std::system(killCmd.c_str());
+      std::cerr << "Killed PID: " << pid << std::endl;
+  }
+
+  // 加上一个通用的清理，防止僵尸进程
+  std::system("pkill -f rosrun"); 
+
+  this->runningPids.clear();
+  
+  // 可选：在日志中添加分隔线
+  std::string markCmd = "echo '\n--- STOPPED ---\n' >> " + this->logFile;
+  std::system(markCmd.c_str());
+}
+
+std::string GazeboInterface::GetRosLogs()
+{
+    std::ifstream t(this->logFile);
+    std::string str;
+
+    // 预分配空间以提高效率（可选）
+    t.seekg(0, std::ios::end);   
+    str.reserve(t.tellg());
+    t.seekg(0, std::ios::beg);
+
+    // 读取整个文件到字符串
+    str.assign((std::istreambuf_iterator<char>(t)),
+                std::istreambuf_iterator<char>());
+                
+    return str;
 }

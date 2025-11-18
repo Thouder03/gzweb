@@ -24,6 +24,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <vector>
 #include <condition_variable>
 
 #include <gazebo/msgs/msgs.hh>
@@ -55,6 +56,14 @@ namespace gzweb
 
     /// \brief Run a ROS node from a package and file.
     public: void RosRun(const std::string &_package, const std::string &_file);
+    
+    // 添加 public 方法
+    public: void RosStop();
+    public: std::string GetRosLogs();
+
+    // 添加 private 变量来存储 PID
+    private: std::vector<int> runningPids;
+    private: const std::string logFile = "/home/ubuntu20/gz_web/tmp/gzweb_ros.log";
     /************************************ */
 
     /// \brief Run the gazebo interface in a thread.
