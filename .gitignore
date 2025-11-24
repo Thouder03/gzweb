@@ -4,3 +4,5 @@ http/client/style/
 gzbridge/build/
 build/
 .vscode/c_cpp_properties.json
+tmp/
+assets/scripts/my_script.js

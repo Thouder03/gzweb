@@ -101,7 +101,10 @@
                     <button id="viewRosLogBtn" class="ui-btn ui-corner-all">View Output Logs</button>
                   </div>
                   
-                  <p id="rosrunStatus" style="color: green;"></p>
+                  <label style="margin-top:10px;">Running History:</label>
+                  <div id="rosNodeList" style="border: 1px solid #555; background: #222; color: #eee; height: 100px; overflow-y: auto; padding: 5px; font-family: monospace; font-size: 12px; margin-bottom: 5px;">
+                      </div>
+                  <p id="rosrunStatus" style="margin-top: 5px; color: green;"></p>
                 </div>
               </div>
 
@@ -1327,21 +1330,60 @@
 
           // Run 按钮
           $('#runRosrunBtn').on('click', function() {
-              var pkg = $('#rosrunPackage').val();
-              var file = $('#rosrunFile').val();
-              $('#rosrunStatus').text('Launching...').css('color', 'blue');
-              iface.rosRun(pkg, file, function(err) {
-                  if(err) $('#rosrunStatus').text('Error: ' + err).css('color', 'red');
-                  else $('#rosrunStatus').text('Launched!').css('color', 'green');
-              });
+            var pkg = $('#rosrunPackage').val();
+            var file = $('#rosrunFile').val();
+            
+            if (!pkg || !file) {
+                $('#rosrunStatus').text('Please enter package and node name.').css('color', 'red');
+                return;
+            }
+
+            $('#rosrunStatus').text('Launching...').css('color', 'blue');
+            
+            iface.rosRun(pkg, file, function(err) {
+                var $list = $('#rosNodeList');
+                var time = new Date().toLocaleTimeString();
+                
+                if(err) {
+                    $('#rosrunStatus').text('Error: ' + err).css('color', 'red');
+                    // (可选) 在列表中显示错误
+                    $list.append('<div style="color:#ff5555;">[' + time + '] Error: ' + pkg + ' ' + file + '</div>');
+                } else {
+                    $('#rosrunStatus').text('Launched!').css('color', 'green');
+                    
+                    // --- 新增：向列表中添加一行 ---
+                    // 格式: [时间] 包名 节点名
+                    var rowHtml = '<div style="border-bottom:1px solid #333;">' + 
+                                  '<span style="color:lime;">[Run]</span> ' + 
+                                  '<span style="color:#aaa;">' + time + '</span> ' + 
+                                  '<b>' + pkg + '</b> ' + file + 
+                                  '</div>';
+                    $list.append(rowHtml);
+                    
+                    // 自动滚动到底部
+                    $list.scrollTop($list[0].scrollHeight);
+                }
+            });
           });
 
           // Stop 按钮
           $('#stopRosrunBtn').on('click', function() {
-              iface.rosStop(function(err) {
-                  $('#rosrunStatus').text(err ? 'Stop Failed' : 'All Stopped').css('color', err ? 'red' : 'orange');
+            iface.rosStop(function(err) {
+                var $list = $('#rosNodeList');
+                var time = new Date().toLocaleTimeString();
+
+                if (err) {
+                    $('#rosrunStatus').text('Stop Failed').css('color', 'red');
+                } else {
+                    $('#rosrunStatus').text('All Stopped').css('color', 'orange');
+                    
+                    // --- 新增：在列表中添加停止标记 ---
+                    $list.append('<div style="color:orange; border-top: 1px dashed #666; margin-top:2px; padding-top:2px;">' + 
+                                '[' + time + '] --- Stopped All Nodes ---</div>');
+                    $list.scrollTop($list[0].scrollHeight);
+                }
               });
-          });
+            });
 
           // --- ROS Log 窗口逻辑 ---
           var $logger = $('#rosLogPopup');

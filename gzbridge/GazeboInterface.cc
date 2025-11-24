@@ -1447,7 +1447,7 @@ void GazeboInterface::RosRun(const std::string &_package, const std::string &_fi
   // 2. > logFile 2>&1: 将标准输出和错误重定向到日志文件
   // 3. &: 在后台运行
   // 4. echo $!: 打印进程 ID
-  std::string cmd = "nohup rosrun " + _package + " " + _file + " >> " + this->logFile + " 2>&1 & echo $!";
+  std::string cmd = "export PYTHONUNBUFFERED=1; nohup stdbuf -oL -eL rosrun " + _package + " " + _file + " >> " + this->logFile + " 2>&1 & echo $!";
   
   std::cerr << "[GZBridge] Running: " << cmd << std::endl;
 
@@ -1489,17 +1489,63 @@ void GazeboInterface::RosStop()
   std::system(markCmd.c_str());
 }
 
+/////////////////////////////////////////////////
 std::string GazeboInterface::GetRosLogs()
 {
     std::ifstream t(this->logFile);
+    
+    // 1. 安全检查：文件是否成功打开
+    if (!t.is_open())
+    {
+        // 如果文件还没生成，返回一个提示信息，而不是让程序崩溃
+        return "Log file does not exist yet. Run a ROS node to start logging.";
+    }
+
+    // 2. 获取文件大小
+    t.seekg(0, std::ios::end);
+    std::streampos fileSize = t.tellg();
+
+    // 3. 安全检查：检查 fileSize 是否有效
+    // tellg() 失败时通常返回 -1，直接转为 size_t 会变成巨大的数导致 crash
+    if (fileSize < 0)
+    {
+         return "";
+    }
+    
+    if (fileSize == 0)
+    {
+        return "";
+    }
+
     std::string str;
 
-    // 预分配空间以提高效率（可选）
-    t.seekg(0, std::ios::end);   
-    str.reserve(t.tellg());
-    t.seekg(0, std::ios::beg);
+    // 4. 安全限制：防止日志文件过大导致内存耗尽
+    // 如果日志超过 500KB，只读取最后 500KB
+    size_t maxLogSize = 500 * 1024; 
+    
+    if (static_cast<size_t>(fileSize) > maxLogSize)
+    {
+        // 移动指针到倒数 maxLogSize 的位置
+        t.seekg(-static_cast<std::streamoff>(maxLogSize), std::ios::end);
+        // 预留空间
+        try {
+            str.reserve(maxLogSize);
+        } catch (...) {
+            return "Error: Log too large to allocate memory.";
+        }
+    }
+    else
+    {
+        // 正常读取：回到文件头
+        t.seekg(0, std::ios::beg);
+        try {
+            str.reserve(static_cast<size_t>(fileSize));
+        } catch (...) {
+            return "Error: Log too large to allocate memory.";
+        }
+    }
 
-    // 读取整个文件到字符串
+    // 5. 读取内容
     str.assign((std::istreambuf_iterator<char>(t)),
                 std::istreambuf_iterator<char>());
                 

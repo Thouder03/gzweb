@@ -63,7 +63,7 @@ namespace gzweb
 
     // 添加 private 变量来存储 PID
     private: std::vector<int> runningPids;
-    private: const std::string logFile = "/home/ubuntu20/gz_web/tmp/gzweb_ros.log";
+    private: const std::string logFile = "/home/ubuntu20/gzweb/tmp/gzweb_ros.log";
     /************************************ */
 
     /// \brief Run the gazebo interface in a thread.
