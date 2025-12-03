@@ -53,6 +53,7 @@
                 <ul>
                   <li id='openCodeEditor'><a href="#">Open Code Editor</a></li>
                   <li id='openRosRunner'><a href="#">Open ROS Runner</a></li>
+                  <li id='openCamera'><a href="#">Robot Camera</a></li>
                 </ul>
               </div>
 
@@ -68,7 +69,7 @@
                   <input type="text" name="codeFilePath" id="codeFilePath" value="assets/scripts/my_script.js">
                   
                   <label for="codeContent">Code Content:</label>
-                  <textarea cols="80" rows="20" name="codeContent" id="codeContent" placeholder="Enter your code here..."></textarea>
+                  <textarea cols="80" rows="20" name="codeContent" id="codeContent" placeholder="Enter your code here..." ></textarea>
                   
                   <div class="ui-grid-a">
                     <div class="ui-block-a">
@@ -119,6 +120,34 @@
                     Waiting for logs...
                   </div>
                   <button id="refreshLogBtn" class="ui-btn ui-btn-b" style="margin: 0;">Manual Refresh</button>
+                </div>
+              </div>
+
+              <div id="cameraPopup" class="code-editor-window" style="display: none; width: 340px; height: 380px;">
+                <div id="cameraHeader" class="ui-bar ui-bar-b" style="cursor: move; padding: 10px;">
+                  <h1 style="margin:0">Camera View</h1>
+                  <a href="#" id="closeCameraBtn" class="ui-btn ui-corner-all ui-icon-delete ui-btn-icon-notext ui-btn-right" data-mini="true">Close</a>
+                </div>
+                
+                <div class="ui-content" style="padding: 10px; display: flex; flex-direction: column; height: calc(100% - 40px);">
+                  
+                  <label for="cameraTopic">Image Topic (Compressed):</label>
+                  <input type="text" id="cameraTopic" value="/camera/rgb/image_raw/compressed" placeholder="/camera/image/compressed">
+                  
+                  <div class="ui-grid-a" style="margin-top: 5px; flex-shrink: 0;">
+                    <div class="ui-block-a">
+                      <button id="subCameraBtn" class="ui-btn ui-corner-all ui-btn-b">Subscribe</button>
+                    </div>
+                    <div class="ui-block-b">
+                      <button id="stopCameraBtn" class="ui-btn ui-corner-all">Stop</button>
+                    </div>
+                  </div>
+                  
+                  <div style="flex-grow: 1; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-top: 10px; border: 1px solid #444;">
+                    <img id="cameraImg" src="" alt="Waiting for stream..." style="max-width: 100%; max-height: 100%; display: none;">
+                    <span id="cameraStatus" style="color: #666; font-size: 12px;">No Signal</span>
+                  </div>
+
                 </div>
               </div>
 
@@ -1399,6 +1428,122 @@
               $logger.hide(); 
               stopLogPolling();
           });
+          
+          // --- 摄像头窗口逻辑 ---
+          var $camPopup = $('#cameraPopup');
+          var $camImg = $('#cameraImg');
+          var $camStatus = $('#cameraStatus');
+          var cameraTopicListener = null;
+
+          // 1. 初始化拖动功能 (复用之前的 makeDraggable 函数)
+          if (typeof makeDraggable === 'function') {
+              makeDraggable($camPopup, $('#cameraHeader'));
+          }
+
+          // 2. 菜单点击事件
+          $('#openCamera').on('click', function() {
+              // 打开时重置位置
+              $camPopup.css({top: '120px', left: 'auto', right: '20px'}).show();
+          });
+
+          // 3. 关闭按钮事件
+          $('#closeCameraBtn').on('click', function() {
+              stopCamera(); // 关闭窗口时自动停止订阅以节省带宽
+              $camPopup.hide();
+          });
+          // 4. 订阅按钮事件 (修正版：连接到 rosbridge 9090 端口)
+          var rosConnection = null; // 专门用于 ROS 图片的连接
+
+          $('#subCameraBtn').on('click', function() {
+              var topicName = $('#cameraTopic').val();
+              
+              if (!topicName) {
+                  alert('Please enter a topic name');
+                  return;
+              }
+
+              // 先清理旧连接和订阅
+              stopCamera(); 
+
+              $camStatus.text('Connecting to ROS Bridge (9090)...').show();
+              $camImg.hide();
+
+              console.log('Attempting to connect to ws://' + window.location.hostname + ':9090');
+
+              // --- 关键修改：建立一个新的连接到 9090 端口 ---
+              try {
+                  rosConnection = new ROSLIB.Ros({
+                      // 使用当前网页的主机名，但端口强制为 9090
+                      url : 'ws://' + window.location.hostname + ':9090'
+                  });
+              } catch (e) {
+                  $camStatus.text('Error: Could not create ROS connection.');
+                  return;
+              }
+
+              // 连接成功回调
+              rosConnection.on('connection', function() {
+                  console.log('Connected to websocket server.');
+                  $camStatus.text('Connected. Waiting for image...');
+                  
+                  // 创建 Topic 对象
+                  cameraTopicListener = new ROSLIB.Topic({
+                      ros: rosConnection,
+                      name: topicName,
+                      messageType: 'sensor_msgs/CompressedImage'
+                  });
+
+                  // 订阅
+                  cameraTopicListener.subscribe(function(message) {
+                      // 收到图片数据
+                      var format = 'jpeg';
+                      // 某些 ROS 版本的 compressed 消息 format 字段可能包含 "jpeg; rgb8" 这样的字符串
+                      if (message.format && message.format.toLowerCase().indexOf('png') !== -1) {
+                          format = 'png';
+                      }
+
+                      $camImg.attr('src', 'data:image/' + format + ';base64,' + message.data);
+                      
+                      if ($camImg.is(':hidden')) {
+                          $camImg.show();
+                          $camStatus.hide();
+                      }
+                  });
+              });
+
+              // 连接错误回调
+              rosConnection.on('error', function(error) {
+                  console.log('Error connecting to websocket server: ', error);
+                  $camStatus.text('Error: Is rosbridge_websocket running on port 9090?');
+                  $camImg.hide();
+              });
+
+              // 连接关闭回调
+              rosConnection.on('close', function() {
+                  console.log('Connection to websocket server closed.');
+                  if (!$camStatus.text().startsWith('Stopped')) {
+                    $camStatus.text('Connection closed.');
+                  }
+              });
+          });
+
+          // 辅助函数：停止订阅并关闭连接 (也需要更新)
+          function stopCamera() {
+              // 1. 取消订阅话题
+              if (cameraTopicListener) {
+                  cameraTopicListener.unsubscribe();
+                  cameraTopicListener = null;
+              }
+              // 2. 关闭 ROS 连接
+              if (rosConnection) {
+                  rosConnection.close();
+                  rosConnection = null;
+              }
+              
+              $camImg.hide();
+              $camImg.attr('src', '');
+              $camStatus.text('Stopped').show();
+          }
 
           function fetchLogs() {
               iface.getRosLogs(function(data) {
