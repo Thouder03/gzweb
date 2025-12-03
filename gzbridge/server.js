@@ -76,7 +76,8 @@ let staticServe = function(req, res) {
           // 1. 尝试找到 gzweb 项目的根目录
           // 假设 staticBasePath = './../http/client' (标准 gzbridge 路径)
           // 那么 path.resolve(staticBasePath, '..', '..') 应该能解析到 gzweb 根目录。
-          const rootDir = path.resolve(staticBasePath, '..', '..');
+          //const rootDir = path.resolve(staticBasePath, '..', '..');
+          const rootDir = '/home/ubuntu20/catkin_ws/src';
 
           // 2. 将用户路径解析为绝对路径
           const absolutePath = path.resolve(rootDir, filePath);
@@ -178,7 +179,7 @@ let staticServe = function(req, res) {
           if (postData.world) {
             console.log(new Date() + ' Received request to load world: ' + postData.world);
             
-            // 调用我们即将添加到 GZNode C++ 插件中的新函数
+            // 调用 GZNode C++ 插件中的新函数
             gzNode.loadWorld(postData.world); 
             
             res.writeHead(200, { 'Content-Type': 'application/json' });

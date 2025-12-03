@@ -26,7 +26,7 @@
               <div id='editMenu' data-role="collapsible" data-inset="false" data-iconpos="left" data-collapsed-icon="carat-r" data-expanded-icon="carat-d">
                 <h3><span class="collapsible_header">Edit</span></h3>
                 <ul data-role="listview">
-                  <li id="loadNewWorld"><a href="#">Load 'my_world.sdf'</a></li>
+                  <li id="loadNewWorld"><a href="#">Load World</a></li>
                   <li id='reset-world' data-icon="false"><a href="#"><span class="collapsible_item">Reset World</span></a></li>
                   <li id='reset-model' data-icon="false"><a href="#"><span class="collapsible_item">Reset Model Poses</span></a></li>
                   <li id='reset-view' data-icon="false"><a href="#"><span class="collapsible_item">Reset View</span></a></li>
@@ -66,7 +66,7 @@
                 
                 <div role="main" class="ui-content" style="padding: 10px;">
                   <label for="codeFilePath">File Path:</label>
-                  <input type="text" name="codeFilePath" id="codeFilePath" value="assets/scripts/my_script.js">
+                  <input type="text" name="codeFilePath" id="codeFilePath" value="vel_pkg/scripts/demo_vel_ctrl.py">
                   
                   <label for="codeContent">Code Content:</label>
                   <textarea cols="80" rows="20" name="codeContent" id="codeContent" placeholder="Enter your code here..." style="height: 176px;"></textarea>
@@ -132,7 +132,7 @@
                 <div class="ui-content" style="padding: 10px; display: flex; flex-direction: column; height: calc(100% - 40px);">
                   
                   <label for="cameraTopic">Image Topic (Compressed):</label>
-                  <input type="text" id="cameraTopic" value="/camera/rgb/image_raw/compressed" placeholder="/camera/image/compressed">
+                  <input type="text" id="cameraTopic" value="/image_raw/compressed" placeholder="/camera/image/compressed">
                   
                   <div class="ui-grid-a" style="margin-top: 5px; flex-shrink: 0;">
                     <div class="ui-block-a">
