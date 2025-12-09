@@ -2652,19 +2652,64 @@ GZ3D.Gui.prototype.initNodeManagerEvents = function()
     });
   }
 
-  /**
-   * 编译工作空间函数
-   * @param {function} callback
+/**
+   * 编译工作空间函数 (支持实时进度)
+   * @param {function} onProgress - 进度回调函数 (msg)
+   * @param {function} onFinish - 完成回调函数 (err, msg)
    */
-  function compileWorkspace(callback) {
-    $.ajax({
-      url: '/node_manager',
-      type: 'POST',
-      contentType: 'application/json',
-      data: JSON.stringify({ action: 'compile' }),
-      success: function(res) { callback(null, res.message); },
-      error: function(xhr) { callback(xhr.responseText || 'Request Failed'); }
-    });
+  function compileWorkspace(onProgress, onFinish) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/node_manager', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+
+    var lastProcessedIndex = 0;
+
+    // 监听实时数据流
+    xhr.onprogress = function() {
+      // 获取最新收到的数据片段
+      var allText = xhr.responseText;
+      var newChunk = allText.substring(lastProcessedIndex);
+      lastProcessedIndex = allText.length;
+
+      // 1. 尝试提取百分比 [ 15%]
+      // 正则解释：\[ 匹配左括号, \s* 匹配任意空格, (\d+) 捕获数字, %\] 匹配百分号和右括号
+      var percentMatch = newChunk.match(/\[\s*(\d+)%\]/);
+      
+      if (percentMatch) {
+          // 如果找到了百分比，只传递百分比信息
+          onProgress('Compiling: ' + percentMatch[1] + '%');
+      } else {
+          // 否则传递原始日志的最后一行（用于显示具体的编译文件，可选）
+          // 限制长度防止状态栏溢出
+          var lines = newChunk.trim().split('\n');
+          if(lines.length > 0) {
+             // 简单的过滤，避免把所有垃圾日志都发给 UI
+             var lastLine = lines[lines.length - 1];
+             if (lastLine.length < 50 && lastLine.length > 0) {
+                onProgress(lastLine); //这一行可选，如果觉得太乱可以注释掉
+             }
+          }
+      }
+    };
+
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        // 检查最终结果字符串中是否包含成功标记
+        if (xhr.responseText.indexOf('[Build Complete]') !== -1) {
+            onFinish(null, 'Build Complete');
+        } else {
+            onFinish('Build failed (check logs)', xhr.responseText);
+        }
+      } else {
+        onFinish('Http Error ' + xhr.status, null);
+      }
+    };
+
+    xhr.onerror = function() {
+        onFinish('Network Error', null);
+    };
+
+    xhr.send(JSON.stringify({ action: 'compile' }));
   }
 
   // --- 事件绑定 ---
@@ -2745,17 +2790,26 @@ GZ3D.Gui.prototype.initNodeManagerEvents = function()
   $('#btnCompileWs').on('click', function() {
       if (!confirm('This may take a while. Continue?')) {return;}
       
-      setStatus('Compiling Workspace...', 'magenta');
-      addToHistory('Starting catkin_make...');
+      setStatus('Starting catkin_make...', 'magenta');
+      addToHistory('Starting compilation stream...');
       
-      compileWorkspace(function(err, msg) {
-          if (err) {
-              setStatus('Compilation Failed', 'red');
-              addToHistory('Build Error: ' + err);
-          } else {
-              setStatus('Compilation Success', 'green');
-              addToHistory('Build Complete.');
-          }
-      });
+      // 调用修改后的函数
+      compileWorkspace(
+        // 进度回调
+        function(progressMsg) {
+            // 更新状态栏显示百分比
+            setStatus(progressMsg, 'cyan');
+        },
+        // 完成回调
+        function(err, msg) {
+            if (err) {
+                setStatus('Compilation Failed', 'red');
+                addToHistory('Build Error: ' + err);
+            } else {
+                setStatus('Compilation Success (100%)', 'green');
+                addToHistory('Build Complete.');
+            }
+        }
+      );
   });
 };

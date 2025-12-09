@@ -50,14 +50,14 @@
               </div>
               <div id='codeEditorMenu' data-role="collapsible" data-inset="false" data-iconpos="left" data-collapsed-icon="carat-r" data-expanded-icon="carat-d">
                 <h3><span class="collapsible_header">Code Editor</span></h3>
-                <ul>
+                <ul data-role="listview">
                   <li id='openCodeEditor'><a href="#">Open Code Editor</a></li>
-                  <li id='openRosRunner'><a href="#">Open ROS Runner</a></li>
                   <li id='openCamera'><a href="#">Robot Camera</a></li>
                 </ul>
                 <hr>
                 <h3>ROS Node Manager</h3>
                 <button id="openNodeManagerBtn" class="ui-btn ui-corner-all ui-btn-b">Open Node Manager</button>
+                <button id="openRosRunner" class="ui-btn ui-corner-all ui-btn-b">Open ROS Runner</button>
               </div>
 
               <div id="codeEditorPopup" class="code-editor-window" data-theme="a" style="display: none;">
@@ -69,7 +69,7 @@
                 
                 <div role="main" class="ui-content" style="padding: 10px;">
                   <label for="codeFilePath">File Path:</label>
-                  <input type="text" name="codeFilePath" id="codeFilePath" value="vel_pkg/scripts/demo_vel_ctrl.py">
+                  <input type="text" name="codeFilePath" id="codeFilePath" value="~/catkin_ws/src/vel_pkg/scripts/demo_vel_ctrl.py">
                   
                   <label for="codeContent">Code Content:</label>
                   <textarea cols="80" rows="20" name="codeContent" id="codeContent" placeholder="Enter your code here..." style="height: 176px;"></textarea>
@@ -165,7 +165,7 @@
                   <div style="border: 1px solid #444; padding: 10px; margin-bottom: 15px;">
                     <h3>Option 1: Load SDF World</h3>
                     <label>World File Path:</label>
-                    <input type="text" id="loadWorldFile" value="my_world.sdf" placeholder="path/to/world.sdf">
+                    <input type="text" id="loadWorldFile" placeholder="path/to/world.sdf">
                     <button id="btnExecuteLoadWorld" class="ui-btn ui-btn-b">Clean & Load World</button>
                   </div>
 
