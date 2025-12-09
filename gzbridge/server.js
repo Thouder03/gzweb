@@ -7,7 +7,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const gzbridge = require('./build/Debug/gzbridge');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 
 /**
  * Path from where the static site is served
@@ -137,28 +137,40 @@ let staticServe = function(req, res) {
                   });
               }
               
-              // B. 编译逻辑
-              else if (data.action === 'compile') {
-                  const cmd = `cd ${wsPath} && catkin_make`; // 也可以加上 source devel/setup.bash
-                  console.log('Executing compile:', cmd);
-                  
-                  // catkin_make 耗时较长
-                  exec(cmd, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
-                      if (error) {
-                          res.writeHead(500, {'Content-Type': 'application/json'});
-                          // 只返回最后 200 个字符的错误，避免超长
-                          const shortErr = stderr.slice(-200) || stdout.slice(-200);
-                          res.end(JSON.stringify({ message: 'Build Error: ' + shortErr }));
-                      } else {
-                          res.writeHead(200, {'Content-Type': 'application/json'});
-                          res.end(JSON.stringify({ message: 'Workspace Built Successfully.' }));
-                      }
-                  });
-              }
-              else {
-                  res.writeHead(400);
-                  res.end('Unknown action');
-              }
+                // B. 编译逻辑 (修改为 spawn 以支持实时输出)
+                else if (data.action === 'compile') {
+                    const wsPath = '/home/ubuntu20/catkin_ws';
+                    
+                    // 使用 spawn 启动进程，这样可以获得实时输出流
+                    // bash -c 允许我们串联命令 (cd && catkin_make)
+                    const child = spawn('bash', ['-c', `cd ${wsPath} && catkin_make`]);
+
+                    // 设置响应头，告诉浏览器这是一个文本流
+                    res.writeHead(200, {'Content-Type': 'text/plain'});
+
+                    // 监听标准输出 (stdout)
+                    child.stdout.on('data', (chunk) => {
+                        // 将输出实时写入 HTTP 响应
+                        res.write(chunk); 
+                    });
+
+                    // 监听标准错误 (stderr) - catkin_make 的进度信息有时也在 stderr 中
+                    child.stderr.on('data', (chunk) => {
+                        res.write(chunk);
+                    });
+
+                    // 监听进程结束
+                    child.on('close', (code) => {
+                        if (code === 0) {
+                            res.end('\n[Build Complete] Success');
+                        } else {
+                            res.end('\n[Build Failed] Exit code: ' + code);
+                        }
+                    });
+                    
+                    // 这里的 return 非常重要，防止外部代码继续执行
+                    return; 
+                }
 
           } catch(e) {
               res.writeHead(500);
@@ -167,7 +179,7 @@ let staticServe = function(req, res) {
           return;
       }
       // --- 结束 Node Manager 路由 ---
-      
+
       if (req.url === '/code_editor') {
         try {
           const data = JSON.parse(body);
