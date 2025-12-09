@@ -55,6 +55,9 @@
                   <li id='openRosRunner'><a href="#">Open ROS Runner</a></li>
                   <li id='openCamera'><a href="#">Robot Camera</a></li>
                 </ul>
+                <hr>
+                <h3>ROS Node Manager</h3>
+                <button id="openNodeManagerBtn" class="ui-btn ui-corner-all ui-btn-b">Open Node Manager</button>
               </div>
 
               <div id="codeEditorPopup" class="code-editor-window" data-theme="a" style="display: none;">
@@ -185,6 +188,45 @@
 
                 </div>
               </div>
+              
+              <div id="nodeManagerPopup" class="code-editor-window" style="display: none; width: 500px; height: 735px; flex-direction: column;">
+                <div id="nodeManagerHeader" class="ui-bar ui-bar-b" style="cursor: move; padding: 10px; flex-shrink: 0;">
+                  <h1 style="margin:0">ROS Node Manager</h1>
+                  <a href="#" id="closeNodeManagerBtn" class="ui-btn ui-corner-all ui-icon-delete ui-btn-icon-notext ui-btn-right" data-mini="true">Close</a>
+                </div>
+                
+                <div class="ui-content" style="padding: 15px; flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto;">
+                  
+                  <div style="border: 1px solid #444; padding: 10px; margin-bottom: 10px;">
+                      <label><b>1. Upload Package (.zip)</b></label>
+                      <input type="file" id="nodeFileInput" accept=".zip,.tar,.gz">
+                      <button id="btnStartUpload" class="ui-btn ui-btn-b">Start Upload</button>
+                  </div>
+
+                  <div style="border: 1px solid #444; padding: 10px; margin-bottom: 10px;">
+                      <label><b>2. Extract Package</b></label>
+                      <label for="nodeFileName">File Name (in src/):</label>
+                      <input type="text" id="nodeFileName" placeholder="e.g., my_robot_node.zip">
+                      <button id="btnExtractNode" class="ui-btn ui-btn-b">Extract (Overwrite)</button>
+                  </div>
+
+                  <div style="border: 1px solid #444; padding: 10px; margin-bottom: 10px;">
+                      <label><b>3. Build Workspace</b></label>
+                      <button id="btnCompileWs" class="ui-btn ui-btn-b" style="background-color: #006400; color: white; text-shadow: none;">Catkin Make</button>
+                  </div>
+
+                  <label>Operation History:</label>
+                  <div id="nodeHistoryLog" style="background: black; color: lime; height: 120px; overflow-y: scroll; padding: 5px; font-family: monospace; font-size: 11px; border: 1px solid #666; margin-bottom: 5px;">
+                      </div>
+
+                  <div style="border-top: 1px solid #666; padding-top: 5px; margin-top: auto;">
+                      <span>Status: </span>
+                      <span id="nodeStatusText" style="color: yellow;">Idle</span>
+                  </div>
+
+                </div>
+              </div>
+
             </ul>
           </div>
         </div>

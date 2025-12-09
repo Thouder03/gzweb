@@ -1632,6 +1632,8 @@ GZ3D.Gui = function(scene)
 
   // 初始化加载窗口事件
   this.initLoadSelectionEvents();
+  //初始化 ROS Node 管理器的交互逻辑
+  this.initNodeManagerEvents();
 
 };
 
@@ -2576,5 +2578,184 @@ GZ3D.Gui.prototype.initLoadSelectionEvents = function()
         alert('Error: GZIface not initialized.');
       }
     }
+  });
+};
+
+/**
+ * 初始化 ROS Node 管理器的交互逻辑
+ */
+GZ3D.Gui.prototype.initNodeManagerEvents = function()
+{
+  var $popup = $('#nodeManagerPopup');
+  var $history = $('#nodeHistoryLog');
+  var $status = $('#nodeStatusText');
+  
+  // --- UI 辅助函数 ---
+  
+  // 添加历史记录
+  function addToHistory(msg) {
+    var time = new Date().toLocaleTimeString();
+    $history.append('<div>[' + time + '] ' + msg + '</div>');
+    $history.scrollTop($history[0].scrollHeight);
+  }
+
+  // 更新状态栏
+  function setStatus(msg, color) {
+    $status.text(msg).css('color', color || 'white');
+  }
+
+  // --- 核心功能函数 (要求1: 可复用函数) ---
+
+  /**
+   * 上传文件函数
+   * @param {File} fileObj - HTML File 对象
+   * @param {function} callback
+   */
+  function uploadNodeFile(fileObj, callback) {
+    var serverUrl = 'http://' + window.location.hostname + ':' + window.location.port + '/upload_node?filename=' + encodeURIComponent(fileObj.name);
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', serverUrl, true);
+    // 使用二进制流传输，避免复杂的 FormData 解析
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+
+    xhr.upload.onprogress = function(e) {
+      if (e.lengthComputable) {
+        var percent = Math.round((e.loaded / e.total) * 100);
+        setStatus('Uploading: ' + percent + '%', 'cyan');
+      }
+    };
+
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {callback(null, 'Upload Complete');}
+        else {callback('Error ' + xhr.status + ': ' + xhr.statusText);}
+      }
+    };
+
+    xhr.send(fileObj); // 直接发送文件对象 (二进制)
+  }
+
+  /**
+   * 解压文件函数
+   * @param {string} fileName - 文件名
+   * @param {function} callback
+   */
+  function extractNodeFile(fileName, callback) {
+    $.ajax({
+      url: '/node_manager',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ action: 'extract', filename: fileName }),
+      success: function(res) { callback(null, res.message); },
+      error: function(xhr) { callback(xhr.responseText || 'Request Failed'); }
+    });
+  }
+
+  /**
+   * 编译工作空间函数
+   * @param {function} callback
+   */
+  function compileWorkspace(callback) {
+    $.ajax({
+      url: '/node_manager',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ action: 'compile' }),
+      success: function(res) { callback(null, res.message); },
+      error: function(xhr) { callback(xhr.responseText || 'Request Failed'); }
+    });
+  }
+
+  // --- 事件绑定 ---
+
+  // 1. 拖动窗口逻辑 (复用)
+  var isDragging = false;
+  var offset = {x: 0, y: 0};
+  $('#nodeManagerHeader').on('mousedown touchstart', function(e) {
+    var evt = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+    isDragging = true;
+    offset.x = evt.clientX - $popup.offset().left;
+    offset.y = evt.clientY - $popup.offset().top;
+    e.preventDefault();
+  });
+  $(document).on('mousemove touchmove', function(e) {
+    if (!isDragging) {return;}
+    var evt = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+    $popup.css({top: (evt.clientY - offset.y) + 'px', left: (evt.clientX - offset.x) + 'px', transform: 'none'});
+  });
+  $(document).on('mouseup touchend', function() { isDragging = false; });
+
+  // 2. 打开/关闭
+  $('#openNodeManagerBtn').on('click', function() {
+      $popup.css({top: '50px', left: '50%', transform: 'translateX(-50%)'}).show();
+  });
+  $('#closeNodeManagerBtn').on('click', function() { $popup.hide(); });
+
+  // 3. 选中文件后自动填入文件名
+  $('#nodeFileInput').on('change', function() {
+      var file = this.files[0];
+      if (file) {
+          $('#nodeFileName').val(file.name);
+          setStatus('File selected: ' + file.name, 'white');
+      }
+  });
+
+  // 4. 开始上传按键
+  $('#btnStartUpload').on('click', function() {
+      var file = $('#nodeFileInput')[0].files[0];
+      if (!file) {
+          alert('Please select a file first.');
+          return;
+      }
+      setStatus('Uploading...', 'cyan');
+      addToHistory('Starting upload: ' + file.name);
+      
+      uploadNodeFile(file, function(err, msg) {
+          if (err) {
+              setStatus('Upload Failed', 'red');
+              addToHistory('Error: ' + err);
+          } else {
+              setStatus('Upload Success', 'green');
+              addToHistory('Success: File saved to server.');
+          }
+      });
+  });
+
+  // 5. 解压按键
+  $('#btnExtractNode').on('click', function() {
+      var name = $('#nodeFileName').val();
+      if (!name) {return alert('Please enter file name');}
+      
+      setStatus('Extracting...', 'yellow');
+      addToHistory('Requesting extraction for: ' + name);
+      
+      extractNodeFile(name, function(err, msg) {
+          if (err) {
+              setStatus('Extraction Failed', 'red');
+              addToHistory('Error: ' + err);
+          } else {
+              setStatus('Extraction Done', 'green');
+              addToHistory('Success: ' + msg);
+          }
+      });
+  });
+
+  // 6. 编译按键
+  $('#btnCompileWs').on('click', function() {
+      if (!confirm('This may take a while. Continue?')) {return;}
+      
+      setStatus('Compiling Workspace...', 'magenta');
+      addToHistory('Starting catkin_make...');
+      
+      compileWorkspace(function(err, msg) {
+          if (err) {
+              setStatus('Compilation Failed', 'red');
+              addToHistory('Build Error: ' + err);
+          } else {
+              setStatus('Compilation Success', 'green');
+              addToHistory('Build Complete.');
+          }
+      });
   });
 };

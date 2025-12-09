@@ -7,6 +7,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const gzbridge = require('./build/Debug/gzbridge');
+const { exec } = require('child_process');
 
 /**
  * Path from where the static site is served
@@ -54,7 +55,38 @@ let staticServe = function(req, res) {
     res.end();
     return;
   }
+  // 1. 处理文件流上传 (放在最前面，不等待 end 事件)
+  if (req.method === 'POST' && req.url.startsWith('/upload_node')) {
+      // 解析 URL 参数获取文件名
+      const urlParams = new URLSearchParams(req.url.split('?')[1]);
+      const filename = urlParams.get('filename');
+      
+      if (!filename) {
+          res.writeHead(400);
+          res.end('Missing filename');
+          return;
+      }
 
+      // 目标路径: /home/ubuntu20/catkin_ws/src
+      const targetPath = path.join('/home/ubuntu20/catkin_ws/src', filename);
+      console.log('Uploading file to:', targetPath);
+
+      const fileStream = fs.createWriteStream(targetPath);
+      
+      req.pipe(fileStream);
+
+      fileStream.on('error', (err) => {
+          console.error('File write error:', err);
+          res.writeHead(500);
+          res.end('Write Error: ' + err.message);
+      });
+
+      fileStream.on('finish', () => {
+          res.writeHead(200);
+          res.end('Upload Received');
+      });
+      return; // 结束处理，不要继续向下执行
+  }
   // 处理 POST 请求
   if (req.method === 'POST') {
     let body = '';
@@ -64,7 +96,78 @@ let staticServe = function(req, res) {
     req.on('end', () => {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      
+      // --- 新增: Node Manager 操作路由 ---
+      if (req.url === '/node_manager') {
+          try {
+              const data = JSON.parse(body);
+              const wsPath = '/home/ubuntu20/catkin_ws';
+              const srcPath = path.join(wsPath, 'src');
 
+              // A. 解压逻辑
+              if (data.action === 'extract') {
+                  const filename = data.filename; // e.g., my_pkg.zip
+                  const filePath = path.join(srcPath, filename);
+                  
+                  // 假设文件夹名是文件名去掉后缀
+                  // 注意：这只是一个假设，实际解压出的文件夹名取决于压缩包内容
+                  // 但为了满足 "删除同名文件夹" 的需求，我们尝试删除 baseName
+                  const baseName = path.parse(filename).name;
+                  const folderPath = path.join(srcPath, baseName);
+
+                  // 构建 Shell 命令
+                  // 1. rm -rf folderPath (删除旧的)
+                  // 2. unzip -o filePath -d srcPath (解压，-o 覆盖)
+                  let cmd = `rm -rf ${folderPath} && unzip -o ${filePath} -d ${srcPath}`;
+                  
+                  // 如果是 tar 包
+                  if (filename.endsWith('.tar') || filename.endsWith('.tar.gz')) {
+                      cmd = `rm -rf ${folderPath} && tar -xvf ${filePath} -C ${srcPath}`;
+                  }
+
+                  console.log('Executing extract:', cmd);
+                  exec(cmd, (error, stdout, stderr) => {
+                      if (error) {
+                          res.writeHead(500, {'Content-Type': 'application/json'});
+                          res.end(JSON.stringify({ message: 'Extract Error: ' + stderr }));
+                      } else {
+                          res.writeHead(200, {'Content-Type': 'application/json'});
+                          res.end(JSON.stringify({ message: 'Extracted: ' + baseName }));
+                      }
+                  });
+              }
+              
+              // B. 编译逻辑
+              else if (data.action === 'compile') {
+                  const cmd = `cd ${wsPath} && catkin_make`; // 也可以加上 source devel/setup.bash
+                  console.log('Executing compile:', cmd);
+                  
+                  // catkin_make 耗时较长
+                  exec(cmd, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+                      if (error) {
+                          res.writeHead(500, {'Content-Type': 'application/json'});
+                          // 只返回最后 200 个字符的错误，避免超长
+                          const shortErr = stderr.slice(-200) || stdout.slice(-200);
+                          res.end(JSON.stringify({ message: 'Build Error: ' + shortErr }));
+                      } else {
+                          res.writeHead(200, {'Content-Type': 'application/json'});
+                          res.end(JSON.stringify({ message: 'Workspace Built Successfully.' }));
+                      }
+                  });
+              }
+              else {
+                  res.writeHead(400);
+                  res.end('Unknown action');
+              }
+
+          } catch(e) {
+              res.writeHead(500);
+              res.end(JSON.stringify({message: 'Server Error: ' + e.message}));
+          }
+          return;
+      }
+      // --- 结束 Node Manager 路由 ---
+      
       if (req.url === '/code_editor') {
         try {
           const data = JSON.parse(body);
