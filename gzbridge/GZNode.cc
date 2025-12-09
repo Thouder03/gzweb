@@ -79,6 +79,7 @@ void GZNode::Init(Handle<Object> exports)
   NODE_SET_PROTOTYPE_METHOD(tpl, "rosRun", RosRun);
   NODE_SET_PROTOTYPE_METHOD(tpl, "rosStop", RosStop);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getRosLogs", GetRosLogs);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "loadLaunch", LoadLaunch);
   // ****************************
 
   NODE_SET_PROTOTYPE_METHOD(tpl, "getIsGzServerConnected",
@@ -323,6 +324,20 @@ void GZNode::LoadWorld(const FunctionCallbackInfo<Value>& args)
   obj->gzIface->LoadWorld(std::string(*worldFile));
 
   return;
+}
+
+/////////////////////////////////////////////////
+void GZNode::LoadLaunch(const FunctionCallbackInfo<Value>& args)
+{
+  Isolate* isolate = args.GetIsolate();
+  // 期望两个参数: package, file
+  if (args.Length() < 2) { /* 抛出异常处理... */ return; }
+
+  GZNode* obj = ObjectWrap::Unwrap<GZNode>(args.This());
+  String::Utf8Value pkg(args[0]->ToString());
+  String::Utf8Value file(args[1]->ToString());
+
+  obj->gzIface->LoadLaunch(std::string(*pkg), std::string(*file));
 }
 
 /////////////////////////////////////////////////

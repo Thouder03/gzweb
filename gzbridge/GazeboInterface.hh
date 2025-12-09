@@ -54,6 +54,8 @@ namespace gzweb
     /// \brief Load a new world by killing and restarting gzserver.
     public: void LoadWorld(const std::string &_worldFile);
 
+    public: void LoadLaunch(const std::string &_package, const std::string &_file);
+
     /// \brief Run a ROS node from a package and file.
     public: void RosRun(const std::string &_package, const std::string &_file);
     
@@ -64,6 +66,7 @@ namespace gzweb
     // 添加 private 变量来存储 PID
     private: std::vector<int> runningPids;
     private: const std::string logFile = "/home/ubuntu20/gzweb/tmp/gzweb_ros.log";
+    //private: bool IsSafeInput(const std::string& input);
     /************************************ */
 
     /// \brief Run the gazebo interface in a thread.
@@ -484,8 +487,9 @@ namespace gzweb
     private: std::condition_variable newServerCondition;
     /// \brief 标志位，指示新的 gzserver 是否已启动并发送了第一个消息
     private: bool newServerStarted = false;
-    
-// 在 public: 访问修饰符下添加以下两个函数声明：
+    // 添加一个辅助清理函数
+    private: void CleanupProcesses();
+
     /// \brief 设置新服务器的连接状态并发送通知
     public: void SetNewServerStarted(bool _started);
     /// \brief 阻塞等待新 gzserver 启动（带超时）

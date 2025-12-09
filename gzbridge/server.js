@@ -193,6 +193,25 @@ let staticServe = function(req, res) {
           res.end(JSON.stringify({ status: 'error', message: e.message }));
         }
       }
+
+    if (req.url === '/load_launch') {
+      try {
+        const data = JSON.parse(body);
+        const pkg = data.package;
+        const file = data.file;
+        
+        console.log('Received Load Launch request:', pkg, file);
+        gzNode.loadLaunch(pkg, file); // 调用 C++
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', message: 'Launch command issued.' }));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: e.message }));
+      }
+      return;
+    }
+    
     });
     return; // 不再继续处理静态文件
   }

@@ -985,19 +985,6 @@ GZ3D.Gui = function(scene)
       }
   );
 
-    $('#loadNewWorld').click(function()
-  {
-    // 触发一个新事件，由 GZIface 处理
-    // 我们硬编码 'my_world.sdf' 作为示例
-    var worldFile = '~/my_world.sdf'; 
-
-    // 向用户发出严重警告
-    if (confirm('这将终止当前服务器进程并加载新世界 (' + worldFile + ')。\n\nGzWeb 将断开连接，您需要手动刷新页面，或浏览器将于十秒后自动刷新\n\n是否继续？'))
-    {
-        that.emitter.emit('loadNewWorld', worldFile);
-    }
-  });
-
   this.emitter.on('reset', function(resetType)
       {
         if (resetType === 'world')
@@ -1642,6 +1629,10 @@ GZ3D.Gui = function(scene)
         that.setSimTime(stats);
       }
   );
+
+  // 初始化加载窗口事件
+  this.initLoadSelectionEvents();
+
 };
 
 /**
@@ -2496,4 +2487,94 @@ var formatTime = function(time)
   timeValue += ('00' + timeMsec.toFixed(0)).slice(-3);
 
   return timeValue;
+};
+
+/**
+ * 初始化加载世界/Launch文件的窗口交互逻辑
+ */
+GZ3D.Gui.prototype.initLoadSelectionEvents = function()
+{
+  var $loadPopup = $('#loadSelectionPopup');
+  var $header = $('#loadSelectionHeader');
+
+  // --- 1. 窗口拖动逻辑 ---
+  var isDragging = false;
+  var offset = {x: 0, y: 0};
+
+  $header.on('mousedown touchstart', function(e) {
+    var evt = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+    isDragging = true;
+    offset.x = evt.clientX - $loadPopup.offset().left;
+    offset.y = evt.clientY - $loadPopup.offset().top;
+    e.preventDefault();
+  });
+
+  $(document).on('mousemove touchmove', function(e) {
+    if (!isDragging) {
+      return;
+    }
+    var evt = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+    $loadPopup.css({
+      top: (evt.clientY - offset.y) + 'px',
+      left: (evt.clientX - offset.x) + 'px',
+      transform: 'none'
+    });
+  });
+
+  $(document).on('mouseup touchend', function() {
+    isDragging = false;
+  });
+
+  // --- 2. 打开/关闭窗口逻辑 ---
+  
+  // 打开窗口
+  $('#openLoadSelection').on('click', function() {
+    $loadPopup.css({top: '100px', left: '50%', transform: 'translateX(-50%)'}).show();
+  });
+
+  // 关闭窗口
+  $('#closeLoadSelectBtn').on('click', function() {
+    $loadPopup.hide();
+  });
+
+  // --- 3. 按钮点击逻辑 ---
+
+  // 按钮 1: Load World (加载 SDF)
+  $('#btnExecuteLoadWorld').on('click', function() {
+    var worldFile = $('#loadWorldFile').val();
+    if (!worldFile) {
+      alert('Enter world file');
+      return;
+    }
+
+    if (confirm('This will KILL all running Gazebo/ROS processes. Continue?')) {
+      $('#loadStatus').show();
+      // 使用 window.iface 避免 jshint 报错
+      if (typeof window.iface !== 'undefined' && window.iface.loadNewWorld) {
+        window.iface.loadNewWorld(worldFile);
+      } else {
+        alert('Error: GZIface not initialized.');
+      }
+    }
+  });
+
+  // 按钮 2: Load Launch (运行 Roslaunch)
+  $('#btnExecuteLoadLaunch').on('click', function() {
+    var pkg = $('#launchPkg').val();
+    var file = $('#launchFile').val();
+    if (!pkg || !file) {
+      alert('Enter package and file name');
+      return;
+    }
+
+    if (confirm('This will KILL all running Gazebo/ROS processes. Continue?')) {
+      $('#loadStatus').text('Killing processes and launching ' + pkg + '/' + file + '... Please wait.').show();
+      
+      if (typeof window.iface !== 'undefined' && window.iface.loadLaunchFile) {
+        window.iface.loadLaunchFile(pkg, file);
+      } else {
+        alert('Error: GZIface not initialized.');
+      }
+    }
+  });
 };

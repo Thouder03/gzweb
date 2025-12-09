@@ -1309,6 +1309,30 @@ GZ3D.GZIface.prototype.loadNewWorld = function(worldFile)
   xhr.send(body);
 };
 
+GZ3D.GZIface.prototype.loadLaunchFile = function(packageName, fileName)
+{
+  var that = this;
+  var serverUrl = 'http://' + this.url + '/load_launch';
+  
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', serverUrl, true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4 && xhr.status === 200) {
+        console.log('Launch command sent. Waiting for reload...');
+        if (that.webSocket) {
+          that.webSocket.close();
+        }
+        // 自动刷新页面
+        setTimeout(function() { location.reload(true); }, 15000); // 给 roslaunch 15秒启动时间
+    }
+  };
+  
+  var body = JSON.stringify({ package: packageName, file: fileName });
+  xhr.send(body);
+};
+
 /**
  * 向服务器发送请求，加载指定文件的内容
  * @param {string} filePath - 文件路径

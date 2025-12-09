@@ -1343,16 +1343,40 @@ bool IsGazeboRunning()
   return ret == 0;
 }
 
+// 辅助函数，用于检查不安全的字符
+bool IsSafeInput(const std::string& input)
+{
+    // 不允许的字符：; & | $ ` ( ) < > "\"
+    // 允许：字母、数字、下划线、破折号、点
+    for (char c : input)
+    {
+        if (!isalnum(c) && c != '_' && c != '-' && c != '.')
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/////////////////////////////////////////////////
+void GazeboInterface::CleanupProcesses()
+{
+  std::cerr << "[GZBridge] Cleaning up existing Gazebo and ROS processes..." << std::endl;
+  
+  // 杀死所有可能冲突的进程
+  // 注意：killall -9 是强制杀死，确保进程不会残留
+  std::string cmd = "killall -9 gzserver gzclient roslaunch rosmaster"; 
+  RunSystemCommand(cmd);
+
+  // 给系统一点时间清理资源
+  std::this_thread::sleep_for(std::chrono::seconds(2));
+}
+
 /////////////////////////////////////////////////
 void GazeboInterface::LoadWorld(const std::string &_worldFile)
 {
-  // 1. 杀死现有的 gzserver 进程
-  // 使用 -9 确保旧进程立即终止，防止冲突
-  std::string killCmd = "killall -9 gzserver";
-  RunSystemCommand(killCmd); 
-
-  // 给 kill 命令和系统一点时间来清理进程表
-  std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
+  // 1. 清理环境
+  this->CleanupProcesses();
 
   // 2. 启动新的 gzserver
   // 假设 'gazebo' 启动了 gzserver 进程
@@ -1394,6 +1418,49 @@ void GazeboInterface::LoadWorld(const std::string &_worldFile)
 }
 
 /////////////////////////////////////////////////
+void GazeboInterface::LoadLaunch(const std::string &_package, const std::string &_file)
+{
+  if (!IsSafeInput(_package) || !IsSafeInput(_file)) return;
+
+  // 1. 清理环境
+  this->CleanupProcesses();
+
+  // 2. 执行 roslaunch
+  // export PYTHONUNBUFFERED=1 确保日志实时输出
+  // nohup ... & 确保后台运行
+  std::string launchCmd = "export PYTHONUNBUFFERED=1; nohup roslaunch " + _package + " " + _file + " >> " + this->logFile + " 2>&1 &";
+  
+  std::cerr << "[GZBridge] Launching: " << launchCmd << std::endl;
+  RunSystemCommand(launchCmd);
+
+  // 3. 等待新的 gzserver 启动并重新连接
+  // roslaunch 启动 gazebo 通常需要比直接 gazebo 命令更长的时间
+  // 这里建议增加轮询时间或使用更长的固定等待
+  
+  std::cerr << "[GZBridge] Waiting for roslaunch to start gzserver..." << std::endl;
+  
+  // 复用之前的轮询逻辑 (IsGazeboRunning)
+  int maxWaitSeconds = 30; // roslaunch 可能比较慢
+  bool processFound = false;
+  for (int i = 0; i < maxWaitSeconds * 2; ++i) 
+  {
+      if (IsGazeboRunning()) {
+          processFound = true;
+          break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+
+  if (processFound) {
+      std::cerr << "[GZBridge] gzserver detected. Initializing bridge..." << std::endl;
+      std::this_thread::sleep_for(std::chrono::seconds(3)); // 给 transport 层多一点时间
+      this->ReInit();
+  } else {
+      std::cerr << "[GZBridge] ERROR: gzserver did not start via roslaunch." << std::endl;
+  }
+}
+
+/////////////////////////////////////////////////
 void GazeboInterface::SetNewServerStarted(bool _started)
 {
   std::lock_guard<std::mutex> lock(this->newServerMutex);
@@ -1420,21 +1487,6 @@ void GazeboInterface::WaitForNewServer()
       std::cerr << "[GZBridge] WARNING: New gzserver did not connect within 20 seconds. Proceeding with ReInit anyway."
                 << std::endl;
   }
-}
-
-// 辅助函数，用于检查不安全的字符
-bool IsSafeInput(const std::string& input)
-{
-    // 不允许的字符：; & | $ ` ( ) < > "\"
-    // 允许：字母、数字、下划线、破折号、点
-    for (char c : input)
-    {
-        if (!isalnum(c) && c != '_' && c != '-' && c != '.')
-        {
-            return false;
-        }
-    }
-    return true;
 }
 
 /////////////////////////////////////////////////

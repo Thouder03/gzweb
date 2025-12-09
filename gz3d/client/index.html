@@ -26,7 +26,7 @@
               <div id='editMenu' data-role="collapsible" data-inset="false" data-iconpos="left" data-collapsed-icon="carat-r" data-expanded-icon="carat-d">
                 <h3><span class="collapsible_header">Edit</span></h3>
                 <ul data-role="listview">
-                  <li id="loadNewWorld"><a href="#">Load World</a></li>
+                  <li id="openLoadSelection"><a href="#">Select World / Launch</a></li>
                   <li id='reset-world' data-icon="false"><a href="#"><span class="collapsible_item">Reset World</span></a></li>
                   <li id='reset-model' data-icon="false"><a href="#"><span class="collapsible_item">Reset Model Poses</span></a></li>
                   <li id='reset-view' data-icon="false"><a href="#"><span class="collapsible_item">Reset View</span></a></li>
@@ -151,6 +151,40 @@
                 </div>
               </div>
 
+              <div id="loadSelectionPopup" class="code-editor-window" style="display: none; height: 570px; width: 450px;">
+                <div id="loadSelectionHeader" class="ui-bar ui-bar-b" style="cursor: move; padding: 10px;">
+                  <h1 style="margin:0">Load Simulation</h1>
+                  <a href="#" id="closeLoadSelectBtn" class="ui-btn ui-corner-all ui-icon-delete ui-btn-icon-notext ui-btn-right" data-mini="true">Close</a>
+                </div>
+                
+                <div class="ui-content" style="padding: 15px;">
+                  
+                  <div style="border: 1px solid #444; padding: 10px; margin-bottom: 15px;">
+                    <h3>Option 1: Load SDF World</h3>
+                    <label>World File Path:</label>
+                    <input type="text" id="loadWorldFile" value="my_world.sdf" placeholder="path/to/world.sdf">
+                    <button id="btnExecuteLoadWorld" class="ui-btn ui-btn-b">Clean & Load World</button>
+                  </div>
+
+                  <div style="border: 1px solid #444; padding: 10px;">
+                    <h3>Option 2: Roslaunch</h3>
+                    <div class="ui-grid-a">
+                      <div class="ui-block-a" style="padding-right:5px;">
+                        <label>Package:</label>
+                        <input type="text" id="launchPkg" placeholder="gazebo_ros">
+                      </div>
+                      <div class="ui-block-b" style="padding-left:5px;">
+                        <label>Launch File:</label>
+                        <input type="text" id="launchFile" placeholder="empty_world.launch">
+                      </div>
+                    </div>
+                    <button id="btnExecuteLoadLaunch" class="ui-btn ui-btn-b">Clean & Roslaunch</button>
+                  </div>
+                  
+                  <p id="loadStatus" style="color:orange; display:none;">Cleaning up processes and loading... Page will refresh automatically.</p>
+
+                </div>
+              </div>
             </ul>
           </div>
         </div>
