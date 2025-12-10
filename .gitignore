@@ -21,3 +21,5 @@ coverage
 doc
 npm-debug.log
 test_results
+assets/scripts/my_script.js
+tmp/
