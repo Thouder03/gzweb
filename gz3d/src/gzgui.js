@@ -1630,11 +1630,16 @@ GZ3D.Gui = function(scene)
       }
   );
 
+  // 初始化添加的
   // 初始化加载窗口事件
   this.initLoadSelectionEvents();
   //初始化 ROS Node 管理器的交互逻辑
   this.initNodeManagerEvents();
-
+  // --- 新增：初始化其他 GUI 窗口事件 ---
+  this.initCodeEditorEvents();
+  this.initRosRunnerEvents();
+  this.initRosLogEvents();
+  this.initCameraEvents();
 };
 
 /**
@@ -2535,7 +2540,7 @@ GZ3D.Gui.prototype.initLoadSelectionEvents = function()
   });
 
   // 关闭窗口
-  $('#closeLoadSelectBtn').on('click', function() {
+  $('#closeLoadSelectBtn').on('click tap', function() {
     $loadPopup.hide();
   });
 
@@ -2735,7 +2740,7 @@ GZ3D.Gui.prototype.initNodeManagerEvents = function()
   $('#openNodeManagerBtn').on('click', function() {
       $popup.css({top: '50px', left: '50%', transform: 'translateX(-50%)'}).show();
   });
-  $('#closeNodeManagerBtn').on('click', function() { $popup.hide(); });
+  $('#closeNodeManagerBtn').on('click tap', function() { $popup.hide(); });
 
   // 3. 选中文件后自动填入文件名
   $('#nodeFileInput').on('change', function() {
@@ -2811,5 +2816,386 @@ GZ3D.Gui.prototype.initNodeManagerEvents = function()
             }
         }
       );
+  });
+};
+
+/**
+ * 通用窗口拖动辅助函数
+ * @param {jQuery Object} $popup - 弹窗 jQuery 对象
+ * @param {jQuery Object} $header - 标题栏 jQuery 对象
+ */
+GZ3D.Gui.prototype.makeDraggable = function($popup, $header)
+{
+  var isDragging = false;
+  var offset = { x: 0, y: 0 };
+
+  $header.on('mousedown touchstart', function(e) {
+    var event = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+    isDragging = true;
+    offset.x = event.clientX - $popup.offset().left;
+    offset.y = event.clientY - $popup.offset().top;
+    
+    $header.css('cursor', 'grabbing');
+    // 防止触摸设备上的默认滚动行为
+    if(e.type === 'touchstart') {
+        // e.preventDefault(); // 注意：某些浏览器可能需要 passive: false
+    }
+  });
+
+  $(document).on('mousemove touchmove', function(e) {
+    if (!isDragging) {return;}
+    var event = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+    
+    $popup.css({
+      top: (event.clientY - offset.y) + 'px',
+      left: (event.clientX - offset.x) + 'px',
+      transform: 'none'
+    });
+    
+    // 如果是 touchmove，通常需要阻止默认滚动
+    if(e.type === 'touchmove') {
+       e.preventDefault();
+    }
+  });
+
+  $(document).on('mouseup touchend', function() {
+    if (isDragging) {
+      isDragging = false;
+      $header.css('cursor', 'move');
+    }
+  });
+};
+
+/**
+ * 初始化代码编辑器逻辑
+ */
+GZ3D.Gui.prototype.initCodeEditorEvents = function()
+{
+  var that = this;
+  var $editor = $('#codeEditorPopup');
+  
+  // 1. 拖动逻辑
+  this.makeDraggable($editor, $('#codeEditorHeader'));
+
+  // 2. 打开菜单
+  $('#openCodeEditor').on('click', function(e) {
+    e.preventDefault();
+    var initialLeft = (window.innerWidth - $editor.outerWidth()) / 2;
+    $editor.css({
+      top: '50px',
+      left: initialLeft + 'px',
+      transform: 'none'
+    }).show();
+  });
+
+  // 3. 关闭按钮 (绑定 click 和 tap)
+  $('#closeCodeEditorBtn').on('click tap', function(e) {
+    e.preventDefault();
+    $editor.hide();
+  });
+
+  // 4. Load 按钮
+  $('#loadCodeBtn').on('click', function() {
+    var filePath = $('#codeFilePath').val();
+    $('#codeEditorStatus').text('Loading...').css('color', 'black');
+    
+    if (window.iface && window.iface.loadCodeFile) {
+      window.iface.loadCodeFile(filePath, function(error, content) {
+        if (error) {
+          $('#codeEditorStatus').text('Load Failed: ' + error).css('color', 'red');
+          $('#codeContent').val('');
+        } else {
+          $('#codeContent').val(content);
+          $('#codeEditorStatus').text('File loaded successfully.').css('color', 'green');
+        }
+      });
+    } else {
+      $('#codeEditorStatus').text('Error: GZIface not connected.').css('color', 'red');
+    }
+  });
+
+  // 5. Save 按钮
+  $('#saveCodeBtn').on('click', function() {
+    var filePath = $('#codeFilePath').val();
+    var content = $('#codeContent').val();
+    $('#codeEditorStatus').text('Saving...').css('color', 'black');
+
+    if (window.iface && window.iface.saveCodeFile) {
+      window.iface.saveCodeFile(filePath, content, function(error) {
+        if (error) {
+          $('#codeEditorStatus').text('Save Failed: ' + error).css('color', 'red');
+        } else {
+          $('#codeEditorStatus').text('File saved successfully.').css('color', 'green');
+        }
+      });
+    } else {
+      $('#codeEditorStatus').text('Error: GZIface not connected.').css('color', 'red');
+    }
+  });
+};
+
+/**
+ * 初始化 ROS Runner 逻辑
+ */
+GZ3D.Gui.prototype.initRosRunnerEvents = function()
+{
+  var that = this;
+  var $runner = $('#rosRunnerPopup');
+  
+  // 1. 拖动
+  this.makeDraggable($runner, $('#rosRunnerHeader'));
+
+  // 2. 打开
+  $('#openRosRunner').on('click', function() {
+    $runner.css({top: '100px', left: '100px', transform: 'none'}).show();
+  });
+
+  // 3. 关闭 (绑定 click 和 tap)
+  $('#closeRosRunnerBtn').on('click tap', function(e) {
+    e.preventDefault();
+    $runner.hide();
+  });
+
+  // 4. Run 按钮
+  $('#runRosrunBtn').on('click', function() {
+    var pkg = $('#rosrunPackage').val();
+    var file = $('#rosrunFile').val();
+    
+    if (!pkg || !file) {
+      $('#rosrunStatus').text('Please enter package and node name.').css('color', 'red');
+      return;
+    }
+
+    $('#rosrunStatus').text('Launching...').css('color', 'blue');
+    
+    if (window.iface && window.iface.rosRun) {
+      window.iface.rosRun(pkg, file, function(err) {
+        var $list = $('#rosNodeList');
+        var time = new Date().toLocaleTimeString();
+        
+        if(err) {
+          $('#rosrunStatus').text('Error: ' + err).css('color', 'red');
+          $list.append('<div style="color:#ff5555;">[' + time + '] Error: ' + pkg + ' ' + file + '</div>');
+        } else {
+          $('#rosrunStatus').text('Launched!').css('color', 'green');
+          var rowHtml = '<div style="border-bottom:1px solid #333;">' + 
+                        '<span style="color:lime;">[Run]</span> ' + 
+                        '<span style="color:#aaa;">' + time + '</span> ' + 
+                        '<b>' + pkg + '</b> ' + file + 
+                        '</div>';
+          $list.append(rowHtml);
+          $list.scrollTop($list[0].scrollHeight);
+        }
+      });
+    }
+  });
+
+  // 5. Stop 按钮
+  $('#stopRosrunBtn').on('click', function() {
+    if (window.iface && window.iface.rosStop) {
+      window.iface.rosStop(function(err) {
+        var $list = $('#rosNodeList');
+        var time = new Date().toLocaleTimeString();
+
+        if (err) {
+          $('#rosrunStatus').text('Stop Failed').css('color', 'red');
+        } else {
+          $('#rosrunStatus').text('All Stopped').css('color', 'orange');
+          $list.append('<div style="color:orange; border-top: 1px dashed #666; margin-top:2px; padding-top:2px;">' + 
+                      '[' + time + '] --- Stopped All Nodes ---</div>');
+          $list.scrollTop($list[0].scrollHeight);
+        }
+      });
+    }
+  });
+};
+
+/**
+ * 初始化 ROS Log 逻辑
+ */
+GZ3D.Gui.prototype.initRosLogEvents = function()
+{
+  var that = this;
+  var $logger = $('#rosLogPopup');
+  var logInterval = null;
+  var autoScrollEnabled = true;
+
+  // 1. 拖动
+  this.makeDraggable($logger, $('#rosLogHeader'));
+
+  // 内部辅助函数
+  function fetchLogs() {
+    if (window.iface && window.iface.getRosLogs) {
+      window.iface.getRosLogs(function(data) {
+        var $content = $('#rosLogContent');
+        $content.text(data || 'No logs yet...');
+        if (autoScrollEnabled) {
+          $content.scrollTop($content[0].scrollHeight);
+        }
+      });
+    }
+  }
+
+  function startLogPolling() {
+    if (logInterval) {clearInterval(logInterval);}
+    fetchLogs(); 
+    logInterval = setInterval(fetchLogs, 1000); 
+  }
+
+  function stopLogPolling() {
+    if (logInterval) {clearInterval(logInterval);}
+  }
+
+  // 2. 打开
+  $('#viewRosLogBtn').on('click', function() {
+    $logger.css({top: '150px', left: '300px', transform: 'none'}).show();
+    startLogPolling();
+  });
+
+  // 3. 关闭 (绑定 click 和 tap)
+  $('#closeRosLogBtn').on('click tap', function(e) {
+    e.preventDefault();
+    $logger.hide();
+    stopLogPolling();
+  });
+
+  // 4. 刷新
+  $('#refreshLogBtn').on('click', function() {
+    fetchLogs();
+  });
+
+  // 5. 清除
+  $('#clearLogBtn').on('click', function() {
+    if(!confirm('Are you sure you want to clear the log file?')) {return;}
+    $.ajax({
+      url: '/roslogs',
+      type: 'DELETE',
+      success: function() {
+        $('#rosLogContent').text('');
+      },
+      error: function() {
+        alert('Failed to clear logs');
+      }
+    });
+  });
+
+  // 6. 自动滚动开关
+  $('#toggleScrollBtn').on('click', function() {
+    autoScrollEnabled = !autoScrollEnabled;
+    var $btn = $(this);
+    if (autoScrollEnabled) {
+      $btn.text('AutoScroll: ON').css('color', 'white');
+      var $content = $('#rosLogContent');
+      $content.scrollTop($content[0].scrollHeight);
+    } else {
+      $btn.text('AutoScroll: OFF').css('color', '#aaa');
+    }
+  });
+};
+
+/**
+ * 初始化 Camera 逻辑
+ */
+GZ3D.Gui.prototype.initCameraEvents = function()
+{
+  var that = this;
+  var $camPopup = $('#cameraPopup');
+  var $camImg = $('#cameraImg');
+  var $camStatus = $('#cameraStatus');
+  
+  var cameraTopicListener = null;
+  var rosConnection = null;
+
+  // 1. 拖动
+  this.makeDraggable($camPopup, $('#cameraHeader'));
+
+  // 内部辅助函数：停止
+  function stopCamera() {
+    if (cameraTopicListener) {
+      cameraTopicListener.unsubscribe();
+      cameraTopicListener = null;
+    }
+    if (rosConnection) {
+      rosConnection.close();
+      rosConnection = null;
+    }
+    $camImg.hide();
+    $camImg.attr('src', '');
+    $camStatus.text('Stopped').show();
+  }
+
+  // 2. 打开
+  $('#openCamera').on('click', function() {
+    $camPopup.css({top: '120px', left: 'auto', right: '20px', transform: 'none'}).show();
+  });
+
+  // 3. 关闭 (绑定 click 和 tap)
+  $('#closeCameraBtn').on('click tap', function(e) {
+    e.preventDefault();
+    stopCamera();
+    $camPopup.hide();
+  });
+
+  // 4. Stop 按钮
+  $('#stopCameraBtn').on('click', function() {
+    stopCamera();
+  });
+
+  // 5. Subscribe 按钮
+  $('#subCameraBtn').on('click', function() {
+    var topicName = $('#cameraTopic').val();
+    if (!topicName) {
+      alert('Please enter a topic name');
+      return;
+    }
+
+    stopCamera(); // 先重置
+
+    $camStatus.text('Connecting to ROS Bridge (9090)...').show();
+    $camImg.hide();
+
+    try {
+      // 依赖全局的 ROSLIB
+      rosConnection = new ROSLIB.Ros({
+        url : 'ws://' + window.location.hostname + ':9090'
+      });
+    } catch (e) {
+      $camStatus.text('Error: Could not create ROS connection (Missing ROSLIB?).');
+      return;
+    }
+
+    rosConnection.on('connection', function() {
+      $camStatus.text('Connected. Waiting for image...');
+      
+      cameraTopicListener = new ROSLIB.Topic({
+        ros: rosConnection,
+        name: topicName,
+        messageType: 'sensor_msgs/CompressedImage'
+      });
+
+      cameraTopicListener.subscribe(function(message) {
+        var format = 'jpeg';
+        if (message.format && message.format.toLowerCase().indexOf('png') !== -1) {
+          format = 'png';
+        }
+        $camImg.attr('src', 'data:image/' + format + ';base64,' + message.data);
+        
+        if ($camImg.is(':hidden')) {
+          $camImg.show();
+          $camStatus.hide();
+        }
+      });
+    });
+
+    rosConnection.on('error', function(error) {
+      $camStatus.text('Error: Is rosbridge_websocket running on port 9090?');
+      $camImg.hide();
+    });
+
+    rosConnection.on('close', function() {
+      if (!$camStatus.text().startsWith('Stopped')) {
+        $camStatus.text('Connection closed.');
+      }
+    });
   });
 };
