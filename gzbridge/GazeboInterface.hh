@@ -62,6 +62,7 @@ namespace gzweb
     // 添加 public 方法
     public: void RosStop();
     public: std::string GetRosLogs();
+    public: void ClearRosLogs();
 
     // 添加 private 变量来存储 PID
     private: std::vector<int> runningPids;

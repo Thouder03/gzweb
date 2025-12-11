@@ -117,12 +117,22 @@
                   <h1 style="margin:0">ROS Terminal Output</h1>
                   <a href="#" id="closeRosLogBtn" class="ui-btn ui-corner-all ui-icon-delete ui-btn-icon-notext ui-btn-right" data-mini="true">Close</a>
                 </div>
-                
                 <div class="ui-content" style="padding: 0; display: flex; flex-direction: column; height: calc(100% - 40px);">
                   <div style="background: black; color: lime; font-family: monospace; padding: 10px; flex-grow: 1; overflow: auto; white-space: pre-wrap;" id="rosLogContent">
                     Waiting for logs...
                   </div>
-                  <button id="refreshLogBtn" class="ui-btn ui-btn-b" style="margin: 0;">Manual Refresh</button>
+                  
+                  <div class="ui-grid-b" style="margin: 0; overflow:visible;">
+                    <div class="ui-block-a">
+                      <button id="refreshLogBtn" class="ui-btn ui-btn-b ui-mini" style="margin: 0; width: 100%;">Refresh</button>
+                    </div>
+                    <div class="ui-block-b">
+                      <button id="clearLogBtn" class="ui-btn ui-btn-a ui-mini" style="margin: 0; width: 100%; background-color: #8b0000; color: white; text-shadow: none;">Clear</button>
+                    </div>
+                    <div class="ui-block-c">
+                      <button id="toggleScrollBtn" class="ui-btn ui-btn-b ui-mini" style="margin: 0; width: 100%;">AutoScroll: ON</button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1490,21 +1500,94 @@
               });
             });
 
-          // --- ROS Log 窗口逻辑 ---
+          // --- ROS Log 窗口逻辑 (升级版) ---
           var $logger = $('#rosLogPopup');
+          var $logContent = $('#rosLogContent');
           var logInterval = null;
+          
+          // 状态变量：默认开启自动滚动
+          var autoScrollEnabled = true; // 默认为开启
+
+          // 1. 窗口拖动
           makeDraggable($logger, $('#rosLogHeader'));
 
+          // 2. 打开窗口
           $('#viewRosLogBtn').on('click', function() {
               $logger.css({top: '150px', left: '300px'}).show();
               startLogPolling();
           });
 
+          // 3. 关闭窗口
           $('#closeRosLogBtn').on('click', function() { 
               $logger.hide(); 
               stopLogPolling();
           });
-          
+
+          // 4. 手动刷新按钮
+          $('#refreshLogBtn').on('click', function() {
+              fetchLogs();
+          });
+
+          // 5. 清空日志按键
+          $('#clearLogBtn').on('click', function() {
+              if(!confirm('Are you sure you want to clear the log file?')) return;
+
+              // 发送 DELETE 请求
+              $.ajax({
+                  url: '/roslogs',
+                  type: 'DELETE',
+                  success: function() {
+                      $('#rosLogContent').text(''); // 清空前端显示
+                      // 可以在这里添加 Toast 提示
+                  },
+                  error: function() {
+                      alert('Failed to clear logs');
+                  }
+              });
+          });
+
+          // 6. 自动滚动切换按键
+          $('#toggleScrollBtn').on('click', function() {
+              autoScrollEnabled = !autoScrollEnabled;
+
+              var $btn = $(this);
+              if (autoScrollEnabled) {
+                  $btn.text('AutoScroll: ON').css('color', 'white');
+                  // 切换回 ON 时立即滚动到底部
+                  var $content = $('#rosLogContent');
+                  $content.scrollTop($content[0].scrollHeight);
+              } else {
+                  $btn.text('AutoScroll: OFF').css('color', '#aaa');
+              }
+          });
+
+          // 7. 获取日志逻辑 (修改滚动判定)
+          function fetchLogs() {
+              // 使用 window.iface
+              if (typeof window.iface !== 'undefined' && window.iface.getRosLogs) {
+                  window.iface.getRosLogs(function(data) {
+                      var $content = $('#rosLogContent');
+                      $content.text(data || 'No logs yet...');
+
+                      // --- 修改: 仅当开启时滚动 ---
+                      if (autoScrollEnabled) {
+                          $content.scrollTop($content[0].scrollHeight);
+                      }
+                  });
+              }
+          }
+
+          function startLogPolling() {
+              if (logInterval) clearInterval(logInterval);
+              fetchLogs(); 
+              logInterval = setInterval(fetchLogs, 1000); 
+          }
+
+          function stopLogPolling() {
+              if (logInterval) clearInterval(logInterval);
+          }          
+          // --- ROS Log 窗口逻辑 (升级版)结束 ---
+
           // --- 摄像头窗口逻辑 ---
           var $camPopup = $('#cameraPopup');
           var $camImg = $('#cameraImg');
@@ -1621,23 +1704,6 @@
               $camStatus.text('Stopped').show();
           }
 
-          function fetchLogs() {
-              iface.getRosLogs(function(data) {
-                  var $content = $('#rosLogContent');
-                  $content.text(data || 'No logs yet...');
-                  $content.scrollTop($content[0].scrollHeight); // 自动滚动到底部
-              });
-          }
-
-          function startLogPolling() {
-              if (logInterval) clearInterval(logInterval);
-              fetchLogs(); // 立即获取一次
-              logInterval = setInterval(fetchLogs, 1000); // 每秒轮询一次
-          }
-
-          function stopLogPolling() {
-              if (logInterval) clearInterval(logInterval);
-          }
         });
         /**** 代码块结束 ****/
         

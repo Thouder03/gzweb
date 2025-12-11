@@ -76,6 +76,7 @@ namespace gzweb
     private: static void LoadWorld(
         const FunctionCallbackInfo<Value>& args);
     private: static void LoadLaunch(const FunctionCallbackInfo<Value>& args);
+    private: static void ClearRosLogs(const FunctionCallbackInfo<Value>& args);
     // ****************************     
     
     private: static void SetPoseMsgFilterMinimumAge(

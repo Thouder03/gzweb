@@ -1603,3 +1603,15 @@ std::string GazeboInterface::GetRosLogs()
                 
     return str;
 }
+
+/////////////////////////////////////////////////
+void GazeboInterface::ClearRosLogs()
+{
+  // 以截断模式打开文件，这会立即清空文件内容
+  std::ofstream ofs(this->logFile, std::ios::trunc);
+  if (ofs.is_open())
+  {
+      ofs.close();
+      std::cerr << "[GZBridge] ROS logs cleared." << std::endl;
+  }
+}

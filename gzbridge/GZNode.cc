@@ -80,6 +80,7 @@ void GZNode::Init(Handle<Object> exports)
   NODE_SET_PROTOTYPE_METHOD(tpl, "rosStop", RosStop);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getRosLogs", GetRosLogs);
   NODE_SET_PROTOTYPE_METHOD(tpl, "loadLaunch", LoadLaunch);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "clearRosLogs", ClearRosLogs);
   // ****************************
 
   NODE_SET_PROTOTYPE_METHOD(tpl, "getIsGzServerConnected",
@@ -369,12 +370,13 @@ void GZNode::RosRun(const FunctionCallbackInfo<Value>& args)
 
   return;
 }
+/////////////////////////////////////////////////
 void GZNode::RosStop(const FunctionCallbackInfo<Value>& args)
 {
     GZNode* obj = ObjectWrap::Unwrap<GZNode>(args.This());
     obj->gzIface->RosStop();
 }
-
+/////////////////////////////////////////////////
 void GZNode::GetRosLogs(const FunctionCallbackInfo<Value>& args)
 {
     Isolate* isolate = args.GetIsolate();
@@ -382,6 +384,11 @@ void GZNode::GetRosLogs(const FunctionCallbackInfo<Value>& args)
     std::string logs = obj->gzIface->GetRosLogs();
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, logs.c_str()));
 }
-
+/////////////////////////////////////////////////
+void GZNode::ClearRosLogs(const FunctionCallbackInfo<Value>& args)
+{
+  GZNode* obj = ObjectWrap::Unwrap<GZNode>(args.This());
+  obj->gzIface->ClearRosLogs();
+}
 /////////////////////////////////////////////////
 NODE_MODULE(gzbridge, InitAll)

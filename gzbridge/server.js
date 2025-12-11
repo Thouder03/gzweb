@@ -331,11 +331,19 @@ let staticServe = function(req, res) {
     return; // 不再继续处理静态文件
   }
   
-  if (req.url === '/roslogs' && req.method === 'GET') {
-      // 调用 C++ 获取日志内容
-      const logs = gzNode.getRosLogs(); 
-      res.writeHead(200, { 'Content-Type': 'text/plain' });
-      res.end(logs);
+  // 处理 ROS 日志请求 (GET: 获取, DELETE: 清空)
+  if (req.url === '/roslogs') {
+      if (req.method === 'GET') {
+          const logs = gzNode.getRosLogs(); 
+          res.writeHead(200, { 'Content-Type': 'text/plain' });
+          res.end(logs);
+      }
+      // --- 新增: 清空日志 ---
+      else if (req.method === 'DELETE') {
+          gzNode.clearRosLogs(); // 调用 C++
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ message: 'Logs cleared' }));
+      }
       return;
   }
 
