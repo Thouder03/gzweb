@@ -3,7 +3,7 @@ module.exports = {
         "browser": true
     },
     "rules": {
-        "max-len": "error"
+        "max-len": "error"{code : 100}
     },
     "parserOptions": {
          "ecmaVersion": 6

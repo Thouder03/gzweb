@@ -1367,6 +1367,8 @@ void GazeboInterface::CleanupProcesses()
   // 注意：killall -9 是强制杀死，确保进程不会残留
   std::string cmd = "killall -9 gzserver gzclient roslaunch rosmaster"; 
   RunSystemCommand(cmd);
+  cmd = "pkill -f rosbridge"; 
+  RunSystemCommand(cmd);
 
   // 给系统一点时间清理资源
   std::this_thread::sleep_for(std::chrono::seconds(2));

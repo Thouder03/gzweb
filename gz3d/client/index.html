@@ -58,6 +58,7 @@
                 <h3>ROS Node Manager</h3>
                 <button id="openNodeManagerBtn" class="ui-btn ui-corner-all ui-btn-b">Open Node Manager</button>
                 <button id="openRosRunner" class="ui-btn ui-corner-all ui-btn-b">Open ROS Runner</button>
+                <button id="openTeleopBtn" class="ui-btn ui-corner-all ui-btn-b">Open Teleop Control</button>
               </div>
 
               <div id="codeEditorPopup" class="code-editor-window" data-theme="a" style="display: none;">
@@ -184,11 +185,11 @@
                     <div class="ui-grid-a">
                       <div class="ui-block-a" style="padding-right:5px;">
                         <label>Package:</label>
-                        <input type="text" id="launchPkg" placeholder="gazebo_ros">
+                        <input type="text" id="launchPkg" placeholder="gazebo_ros" value="bingda_tutorials">
                       </div>
                       <div class="ui-block-b" style="padding-left:5px;">
                         <label>Launch File:</label>
-                        <input type="text" id="launchFile" placeholder="empty_world.launch">
+                        <input type="text" id="launchFile" placeholder="empty_world.launch" value="simulation_robot.launch">
                       </div>
                     </div>
                     <button id="btnExecuteLoadLaunch" class="ui-btn ui-btn-b">Clean & Roslaunch</button>
@@ -237,6 +238,59 @@
                 </div>
               </div>
 
+              <div id="teleopPopup" class="code-editor-window" style="display: none; width: 320px; height: auto;">
+                <div id="teleopHeader" class="ui-bar ui-bar-b" style="cursor: move; padding: 10px;">
+                  <h1 style="margin:0">Teleop Control</h1>
+                  <a href="#" id="closeTeleopBtn" class="ui-btn ui-corner-all ui-icon-delete ui-btn-icon-notext ui-btn-right" data-mini="true">Close</a>
+                </div>
+                
+                <div class="ui-content" style="padding: 10px;">
+                  
+                  <div style="display: flex; margin-bottom: 10px;">
+                    <input type="text" id="teleopTopic" value="/cmd_vel" style="flex-grow: 1; padding: 5px;" placeholder="/cmd_vel">
+                    <button id="btnSetTeleopTopic" class="ui-btn ui-btn-b ui-mini" style="margin: 0 0 0 5px; width: auto;">Set</button>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                      <div style="width: 48%;">
+                          <div class="teleop-label">Linear Speed</div>
+                          <div class="teleop-grid" style="grid-template-columns: 1fr 1fr;">
+                              <div class="teleop-btn" data-key="q">Q<span class="teleop-label">+</span></div>
+                              <div class="teleop-btn" data-key="z">Z<span class="teleop-label">-</span></div>
+                          </div>
+                      </div>
+                      <div style="width: 48%;">
+                          <div class="teleop-label">Angular Speed</div>
+                          <div class="teleop-grid" style="grid-template-columns: 1fr 1fr;">
+                              <div class="teleop-btn" data-key="w">W<span class="teleop-label">+</span></div>
+                              <div class="teleop-btn" data-key="x">X<span class="teleop-label">-</span></div>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div class="teleop-label" style="text-align: center;">Direction Control</div>
+                  <div class="teleop-grid">
+                    <div class="teleop-btn" data-key="u">U<span class="teleop-label">Here</span></div>
+                    <div class="teleop-btn" data-key="i">I<span class="teleop-label">Fwd</span></div>
+                    <div class="teleop-btn" data-key="o">O<span class="teleop-label">Here</span></div>
+                    
+                    <div class="teleop-btn" data-key="j">J<span class="teleop-label">Left</span></div>
+                    <div class="teleop-btn" data-key="k">K<span class="teleop-label">Stop</span></div>
+                    <div class="teleop-btn" data-key="l">L<span class="teleop-label">Right</span></div>
+                    
+                    <div class="teleop-btn" data-key="m">M<span class="teleop-label">Here</span></div>
+                    <div class="teleop-btn" data-key=",">,<span class="teleop-label">Back</span></div>
+                    <div class="teleop-btn" data-key=".">.<span class="teleop-label">Here</span></div>
+                  </div>
+
+                  <div class="teleop-info">
+                      Speed: <span id="valSpeed">0.5</span> | Turn: <span id="valTurn">1.0</span><br>
+                      Cmd: <span id="valCmd">Stop</span>
+                  </div>
+                  <div id="teleopConnectionStatus" style="font-size: 10px; color: #888; text-align: right; margin-top: 2px;">Disconnected</div>
+                </div>
+
+              </div>
             </ul>
           </div>
         </div>

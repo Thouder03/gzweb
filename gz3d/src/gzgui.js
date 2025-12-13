@@ -1640,6 +1640,7 @@ GZ3D.Gui = function(scene)
   this.initRosRunnerEvents();
   this.initRosLogEvents();
   this.initCameraEvents();
+  this.initTeleopEvents();
 };
 
 /**
@@ -3197,5 +3198,226 @@ GZ3D.Gui.prototype.initCameraEvents = function()
         $camStatus.text('Connection closed.');
       }
     });
+  });
+};
+/**
+ * 初始化 Teleop 键盘控制逻辑
+ */
+GZ3D.Gui.prototype.initTeleopEvents = function()
+{
+  var $popup = $('#teleopPopup');
+  var $status = $('#teleopConnectionStatus');
+  var $valSpeed = $('#valSpeed');
+  var $valTurn = $('#valTurn');
+  var $valCmd = $('#valCmd');
+  
+  // 状态变量
+  var ros = null;
+  var cmdVelTopic = null;
+  var topicName = '/cmd_vel';
+  var isConnected = false;
+  
+  // 运动参数
+  var speed = 0.5;
+  var turn = 1.0;
+  var x = 0;
+  var y = 0;
+  var z = 0;
+  var th = 0;
+
+  // 键位映射 (对应 teleop_twist_keyboard.py)
+  var moveBindings = {
+    'i': {x: 1, y: 0, z: 0, ang: 0},
+    'o': {x: 1, y: 0, z: 0, ang: -1},
+    'j': {x: 0, y: 0, z: 0, ang: 1},
+    'l': {x: 0, y: 0, z: 0, ang: -1},
+    'u': {x: 1, y: 0, z: 0, ang: 1},
+    ',': {x: -1, y: 0, z: 0, ang: 0},
+    '.': {x: -1, y: 0, z: 0, ang: 1},
+    'm': {x: -1, y: 0, z: 0, ang: -1},
+    'O': {x: 1, y: -1, z: 0, ang: 0}, // Shift支持(可选)
+    'I': {x: 1, y: 0, z: 0, ang: 0},
+    'J': {x: 0, y: 1, z: 0, ang: 0},
+    'L': {x: 0, y: -1, z: 0, ang: 0},
+    'U': {x: 1, y: 1, z: 0, ang: 0},
+    '<': {x: -1, y: 0, z: 0, ang: 0},
+    '>': {x: -1, y: -1, z: 0, ang: 0},
+    'M': {x: -1, y: 1, z: 0, ang: 0},
+    'k': {x: 0, y: 0, z: 0, ang: 0},  // Stop
+    'K': {x: 0, y: 0, z: 0, ang: 0}
+  };
+
+  var speedBindings = {
+    'q': {scale: 1.1, type: 'speed'},
+    'z': {scale: 0.9, type: 'speed'},
+    'w': {scale: 1.1, type: 'turn'},
+    'x': {scale: 0.9, type: 'turn'}
+  };
+
+  // --- ROS 连接函数 ---
+  function connectRos() {
+    if (ros) { return; } // 已存在连接
+
+    var rosUrl = 'ws://' + window.location.hostname + ':9090';
+    $status.text('Connecting to 9090...');
+    
+    try {
+        ros = new ROSLIB.Ros({ url: rosUrl });
+
+        ros.on('connection', function() {
+            isConnected = true;
+            $status.text('Connected to ' + topicName).css('color', 'green');
+            setupTopic();
+        });
+
+        ros.on('error', function(error) {
+            $status.text('Connection Error (Check rosbridge 9090)').css('color', 'red');
+            isConnected = false;
+        });
+
+        ros.on('close', function() {
+            $status.text('Disconnected').css('color', '#888');
+            isConnected = false;
+            ros = null;
+        });
+    } catch (e) {
+        $status.text('Error: ' + e.message).css('color', 'red');
+    }
+  }
+
+  function setupTopic() {
+      if (!ros) { return; }
+      if (cmdVelTopic) { cmdVelTopic.unadvertise(); }
+      
+      cmdVelTopic = new ROSLIB.Topic({
+        ros: ros,
+        name: topicName,
+        messageType: 'geometry_msgs/Twist'
+      });
+      console.log('Teleop publishing to:', topicName);
+  }
+
+  // --- 运动控制逻辑 ---
+  function updateState(key) {
+    // 1. 检查是否是移动键
+    if (key in moveBindings) {
+        x = moveBindings[key].x;
+        y = moveBindings[key].y;
+        z = moveBindings[key].z;
+        th = moveBindings[key].ang;
+        $valCmd.text(getCmdDescription(x, th));
+        publishTwist();
+    }
+    // 2. 检查是否是速度键
+    else if (key in speedBindings) {
+        var binding = speedBindings[key];
+        if (binding.type === 'speed') {
+            speed = speed * binding.scale;
+            $valSpeed.text(speed.toFixed(3));
+        } else {
+            turn = turn * binding.scale;
+            $valTurn.text(turn.toFixed(3));
+        }
+    }
+  }
+
+  function publishTwist() {
+      if (!cmdVelTopic || !isConnected) { return; }
+      
+      var twist = new ROSLIB.Message({
+        linear: { x: x * speed, y: y * speed, z: z * speed },
+        angular: { x: 0, y: 0, z: th * turn }
+      });
+      cmdVelTopic.publish(twist);
+  }
+  
+  function getCmdDescription(lx, az) {
+      if (lx === 0 && az === 0) { return 'Stop'; }
+      if (lx > 0) { return 'Forward'; }
+      if (lx < 0) { return 'Back'; }
+      if (az > 0) { return 'Turn Left'; }
+      if (az < 0) { return 'Turn Right'; }
+      return 'Moving';
+  }
+
+  // --- UI 交互事件 ---
+  
+  // 1. 窗口拖动
+  var isDragging = false;
+  var offset = {x: 0, y: 0};
+  $('#teleopHeader').on('mousedown touchstart', function(e) {
+    var evt = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+    isDragging = true;
+    offset.x = evt.clientX - $popup.offset().left;
+    offset.y = evt.clientY - $popup.offset().top;
+    e.preventDefault();
+  });
+  $(document).on('mousemove touchmove', function(e) {
+    if (!isDragging) { return; }
+    var evt = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+    $popup.css({top: (evt.clientY - offset.y) + 'px', left: (evt.clientX - offset.x) + 'px', transform: 'none'});
+  });
+  $(document).on('mouseup touchend', function() { isDragging = false; });
+
+  // 2. 打开/关闭窗口
+  $('#openTeleopBtn').on('click', function() {
+      $popup.css({top: '80px', left: 'auto', right: '20px'}).show();
+      connectRos(); // 打开时尝试连接
+  });
+  $('#closeTeleopBtn').on('click', function() {
+      $popup.hide();
+      // 关闭时发送停止指令，防止机器人失控
+      x = 0; y = 0; z = 0; th = 0;
+      publishTwist();
+  });
+
+  // 3. 设置话题
+  $('#btnSetTeleopTopic').on('click', function() {
+      var newTopic = $('#teleopTopic').val();
+      if(newTopic) {
+          topicName = newTopic;
+          setupTopic();
+          $status.text('Topic set to: ' + topicName);
+      }
+  });
+
+  // 4. 鼠标点击虚拟按键
+  $('.teleop-btn').on('mousedown touchstart', function(e) {
+      var key = $(this).data('key');
+      updateState(key);
+      $(this).addClass('active-key');
+      e.preventDefault(); // 防止文本被选中
+  });
+  
+  $('.teleop-btn').on('mouseup touchend mouseleave', function() {
+      $(this).removeClass('active-key');
+  });
+
+  // 5. 键盘监听 (仅当窗口显示时生效)
+  $(document).on('keydown', function(e) {
+      if ($popup.is(':hidden')) { return; }
+      
+      var key = e.key;
+      // 兼容 , 和 . 
+      if (key === 'ArrowUp') { key = 'i'; } // 可选：添加方向键支持
+      if (key === 'ArrowDown') { key = ','; }
+      
+      // 查找对应UI元素并高亮
+      var $btn = $('.teleop-btn[data-key="' + key + '"]');
+      if ($btn.length > 0) {
+          if (!$btn.hasClass('active-key')) { // 防止重复触发
+              $btn.addClass('active-key');
+              updateState(key);
+          }
+      }
+  });
+
+  $(document).on('keyup', function(e) {
+      if ($popup.is(':hidden')) { return; }
+      var key = e.key;
+      var $btn = $('.teleop-btn[data-key="' + key + '"]');
+      if ($btn.length > 0) {
+          $btn.removeClass('active-key');
+      }
   });
 };
