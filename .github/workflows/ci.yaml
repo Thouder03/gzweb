@@ -1,64 +1,95 @@
-name: Node.js CI (Docker)
+name: Node.js CI (Docker Version)
 
 on: [push, pull_request]
 
 jobs:
   build:
-    # 宿主机用最新的，避免排队；环境由下方的 container 定义
+    # 使用 latest 宿主机避免排队，实际环境由下方的 container 决定
     runs-on: ubuntu-latest
     
     container:
-      image: ubuntu:20.04 # 强制在 20.04 容器内运行
+      image: ubuntu:20.04
+      env:
+        # 核心：防止 tzdata 等包安装时弹出交互菜单导致卡死
+        DEBIAN_FRONTEND: noninteractive
 
     strategy:
       matrix:
-        node-version: [14.x] # 容器内建议使用较稳定的版本
+        # 在 Docker 容器中建议使用 Node 14.x，稳定性较好
+        node-version: [14.x]
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-    - name: Install Base Tools
+    - name: Initialize Container Environment
       run: |
         apt-get update
-        # 容器镜像是精简的，需要手动安装 sudo, curl, gnupg 等基础工具
-        apt-get install -y sudo wget curl gnupg2 lsb-release
+        # 预设时区防止 tzdata 报错，并安装基础工具
+        ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime
+        apt-get install -y tzdata sudo wget curl gnupg2 lsb-release
 
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
 
-    - name: Setup Repositories
+    - name: Setup Third-party Repositories
       run: |
-        # Chrome 源
-        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        # 添加 Google Chrome 源
+        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
         echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/chrome.list
         
-        # Gazebo 源
-        wget https://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
+        # 添加 Gazebo 官方源 (针对 Ubuntu 20.04 focal)
+        wget https://packages.osrfoundation.org/gazebo.key -O - | apt-key add -
         echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable focal main" > /etc/apt/sources.list.d/gazebo-stable.list
 
-    - name: Install Dependencies
+    - name: Install System Dependencies
       run: |
         apt-get update
-        # 容器内不需要 sudo (默认就是 root)，但保留 sudo 也没问题
-        # 注意：在 20.04 中依然使用 libgazebo11-dev 替代 libgazebo9-dev
-        apt-get install -y xvfb google-chrome-stable gnustep-base-runtime libjansson-dev libboost-dev imagemagick libtinyxml-dev git cmake build-essential libgazebo11-dev
+        # 注意：Ubuntu 20.04 官方支持的是 libgazebo11-dev
+        apt-get install -y \
+          xvfb \
+          google-chrome-stable \
+          gnustep-base-runtime \
+          libjansson-dev \
+          libboost-dev \
+          imagemagick \
+          libtinyxml-dev \
+          git \
+          cmake \
+          build-essential \
+          libgazebo11-dev
 
-    - name: Setup Headless Chrome
+    - name: Setup Headless Chrome for Docker
       run: |
+        # 下载 xvfb-chrome 包装脚本
         wget -q -O /usr/bin/xvfb-chrome https://gist.githubusercontent.com/chapulina/a80bd83d3494c96dc9eead843579c435/raw/7d304595d401c1265b533626d542ace7e6916002/xvfb-chrome
+        chmod 755 /usr/bin/xvfb-chrome
+        
+        # 关键：在 Docker 容器中以 root 运行 Chrome 必须添加 --no-sandbox
+        # 同时添加 --disable-dev-shm-usage 防止容器内存不足导致崩溃
+        sed -i 's/exec google-chrome/exec google-chrome --no-sandbox --disable-dev-shm-usage/g' /usr/bin/xvfb-chrome
+        
+        # 创建软链接
         ln -sf /usr/bin/xvfb-chrome /usr/bin/google-chrome
-        chmod 755 /usr/bin/google-chrome
-        # 解决 Docker 容器中运行 Chrome 的沙盒问题
-        sed -i 's/exec google-chrome/& --no-sandbox/g' /usr/bin/xvfb-chrome
+        
+        # 初始化配置环境（忽略可能存在的错误）
+        defaults write com.google.chrome HardwareAccelerationModeEnabled -integer 1 || true
 
-    - name: Build and Test
+    - name: Build and Deploy
       run: |
         npm install -g grunt
+        # npm run deploy 会自动编译 C++ 插件并处理资源
         npm run deploy --verbose
-        # 注意：在容器中测试通常需要 --no-sandbox 参数
-        npm run test:headless || echo "Test failed, but check logs"
+
+    - name: Run Tests
+      run: |
+        # 在 Docker 中运行无头浏览器测试
+        npm run test:headless
+
+    - name: Update and Generate Docs
+      run: |
         npm run update
         npm run docs
       env:
