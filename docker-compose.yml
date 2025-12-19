@@ -1,0 +1,21 @@
+version: '3'
+services:
+  gzweb:
+    build: .
+    image: my_gazebo_web_ros:v3
+    container_name: gzweb_dev
+    ports:
+      - "8080:8080"  # Gzweb
+      - "9090:9090"  # Rosbridge
+    volumes:
+      - /home/ubuntu20/gzweb:/root/gzweb
+      - /home/ubuntu20/catkin_ws/src:/root/catkin_ws/src
+      # 挂载 entrypoint 方便修改
+      - /home/ubuntu20/gzweb/dev_entrypoint.sh:/dev_entrypoint.sh
+      # - /tmp/.X11-unix:/tmp/.X11-unix # 挂载 X11 套接字
+
+    shm_size: '512mb'
+
+    stdin_open: true
+    tty: true
+    privileged: true # 给容器更高权限访问系统资源
