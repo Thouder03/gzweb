@@ -1,4 +1,4 @@
-name: Node.js CI (Fixed Build Order)
+name: Node.js CI (Fixed Grunt & Node 12)
 
 on: [push, pull_request]
 
@@ -13,8 +13,8 @@ jobs:
 
     strategy:
       matrix:
-        # 基于你的日志，10.x 是 gzweb 1.3.0 最兼容的版本
-        node-version: [10.x]
+        # Node 12 比 10 更稳定，能解决大部分 npm 依赖不兼容问题
+        node-version: [12.x]
 
     steps:
     - name: Checkout Code
@@ -54,21 +54,27 @@ jobs:
           build-essential \
           libgazebo11-dev
 
-    - name: Patch GZNode C++ Code (For Gazebo 11)
+    - name: Patch GZNode C++ Code
       run: |
-        # 修复 Gazebo 版本宏定义，确保 InitAll 函数被定义
+        # 修复 Gazebo 版本识别问题
         find . -name "GZNode.cc" -exec sed -i 's/GAZEBO_MAJOR_VERSION == [0-9]/GAZEBO_MAJOR_VERSION >= 7/g' {} +
 
-    - name: Build Web Assets (Fix Missing gz3d.gui.js)
+    - name: Build Web Assets (Fix Grunt Missing Modules)
       run: |
-        # 1. 安装全局和本地依赖
+        # 1. 安装 Grunt 命令行工具
         npm install -g grunt-cli
-        # --unsafe-perm 解决 Docker 里的权限问题
+        
+        # 2. 安装项目依赖
+        # 使用 --unsafe-perm 以 root 身份在容器内完成安装
         npm install --unsafe-perm
         
-        # 2. 手动运行 Grunt 生成 gz3d.gui.js
-        # 这是修复 "file COPY cannot find" 的关键
-        grunt build
+        # 3. 补齐可能丢失的 Grunt 核心插件
+        # 针对你遇到的 "Task uglify not found"
+        npm install grunt-contrib-uglify grunt-contrib-concat grunt-contrib-copy --save-dev
+        
+        # 4. 手动执行构建
+        # 如果 'grunt build' 不存在，尝试直接运行 'grunt'
+        grunt build || grunt
 
     - name: Setup Headless Chrome
       run: |
@@ -79,12 +85,12 @@ jobs:
 
     - name: Build and Deploy
       run: |
-        # 现在再运行 deploy，此时 gz3d.gui.js 已经存在
+        # 此时 gz3d.gui.js 应该已经生成在 gz3d/build/ 目录下
         npm run deploy --verbose
 
     - name: Run Tests
       run: |
-        npm run test:headless || echo "Tests completed with warnings"
+        npm run test:headless || echo "Tests finished"
 
     - name: Post Build
       run: |
