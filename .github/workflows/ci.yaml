@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         # 在 Docker 容器中建议使用 Node 14.x，稳定性较好
-        node-version: [14.x]
+        node-version: [10.x]
 
     steps:
     - name: Checkout Code
