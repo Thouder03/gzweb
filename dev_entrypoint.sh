@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-export LIBGL_ALWAYS_SOFTWARE=1
-export GALLIUM_DRIVER=llvmpipe
+# 设置 GAZEBO_MODEL_PATH 环境变量
+export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/root/catkin_ws/src/bingda_tutorials/models:/root/catkin_ws/src
 
 # 1. 加载 ROS 环境并编译
 source "/opt/ros/noetic/setup.bash"
@@ -19,26 +19,14 @@ if [ ! -d "http/client/assets" ]; then
     ./deploy.sh -m
 fi
 
-# 3. 启动基础服务
-# roscore &
 sleep 3
 
-# 4. 关键：通过 xvfb-run 模拟图形环境启动仿真
-# 这样 Gazebo 渲染引擎才能初始化摄像头传感器
+roslaunch bingda_tutorials simulation_robot.launch &
 
-# ldconfig
-# roslaunch bingda_tutorials simulation_robot.launch &
-
-echo "正在虚拟显示器环境下启动仿真..."
-xvfb-run -s "-screen 0 1280x1024x24" roslaunch bingda_tutorials simulation_robot.launch &
-# xvfb-run -s "-screen 0 1280x1024x24" \
-#     roslaunch bingda_tutorials simulation_robot.launch &
+echo "正在启动仿真..."
 
 # 等待仿真完全加载
-sleep 10
-
-echo "检查话题列表中是否存在摄像头..."
-rostopic list | grep image || echo "警告：未找到图像话题，请检查 URDF 插件配置。"
+sleep 8
 
 echo "所有服务已就绪，正在启动 gzweb..."
 npm start
