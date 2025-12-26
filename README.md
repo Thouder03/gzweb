@@ -14,3 +14,6 @@ See the tutorial [here](http://gazebosim.org/tutorials?tut=gzweb_install&cat=gzw
 
 See the tutorial [here](http://gazebosim.org/tutorials?tut=gzweb_development&cat=gzweb)
 
+# 注意
+
+本工程为gzweb自用修改版本。

@@ -6,3 +6,6 @@ build/
 .vscode/c_cpp_properties.json
 tmp/
 assets/scripts/my_script.js
+repomix-output.xml
+roslaunch.sh
+repomix.sh
