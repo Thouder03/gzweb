@@ -9,18 +9,15 @@ services:
       - "9090:9090"  # Rosbridge
       - "11311:11311"
     volumes:
-      - /home/ubuntu20/gzweb:/root/gzweb
-      - /home/ubuntu20/catkin_ws/src:/root/catkin_ws/src
-      # 挂载 entrypoint 方便修改
-      - /home/ubuntu20/gzweb/dev_entrypoint.sh:/dev_entrypoint.sh
-      - /tmp/.X11-unix:/tmp/.X11-unix # 挂载 X11 套接字
+      # 如果想让容器内的修改同步到主机，可以保留挂载；如果完全依赖镜像内代码，可注释掉
+      - /home/ubuntu20/gzweb:/home/ubuntu20/gzweb
+      - /home/ubuntu20/catkin_ws:/home/ubuntu20/catkin_ws
+      - /tmp/.X11-unix:/tmp/.X11-unix
     devices:
-      - /dev/dri:/dev/dri  # 挂载显卡渲染节点
+      - /dev/dri:/dev/dri
     environment:
       - DISPLAY=$DISPLAY
-      
     shm_size: '512mb'
-
     stdin_open: true
     tty: true
-    privileged: true # 给容器更高权限访问系统资源
+    privileged: true
