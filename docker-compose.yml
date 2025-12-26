@@ -2,16 +2,13 @@ version: '3'
 services:
   gzweb:
     build: .
-    image: my_gazebo_web_ros:v3
+    image: gzweb_sim:v1
     container_name: gzweb_dev
     ports:
       - "8080:8080"  # Gzweb
       - "9090:9090"  # Rosbridge
       - "11311:11311"
     volumes:
-      # 如果想让容器内的修改同步到主机，可以保留挂载；如果完全依赖镜像内代码，可注释掉
-      - /home/ubuntu20/gzweb:/home/ubuntu20/gzweb
-      - /home/ubuntu20/catkin_ws:/home/ubuntu20/catkin_ws
       - /tmp/.X11-unix:/tmp/.X11-unix
     devices:
       - /dev/dri:/dev/dri

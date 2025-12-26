@@ -22,6 +22,8 @@
   },
   "dependencies": {
     "fs": "0.0.1-security",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-uglify": "^5.2.2",
     "http": "0.0.0",
     "nan": "^2.14.2",
     "node-gyp": "6.1.0",
