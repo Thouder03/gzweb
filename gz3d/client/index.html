@@ -38,6 +38,8 @@
                     <li id='view-grid' data-icon="false" data-iconpos="right" style="border: none !important;"><a href="#"><span class="collapsible_item">Grid</span></a></li>
                     <li id='view-collisions' data-icon="false" data-iconpos="right" style="border: none !important;"><a href="#"><span class="collapsible_item">Collisions</span></a></li>
                     <li id='view-orbit-indicator' data-icon="false" data-iconpos="right" style="border: none !important;"><a href="#"><span class="collapsible_item">Orbit Indicator</span></a></li>
+                    <!-- 新增 Lichtblick 按钮 -->
+                    <li id='view-lichtblick' data-icon="false" data-iconpos="right" style="border: none !important;"><a href="#"><span class="collapsible_item">Lichtblick Diagnosis</span></a></li>
                   </ul>
               </div>
               <div data-role="collapsible" data-inset="false" data-iconpos="left" data-collapsed-icon="carat-r" data-expanded-icon="carat-d">
@@ -267,7 +269,6 @@
                           </div>
                       </div>
                   </div>
-
                   <div class="teleop-label" style="text-align: center;">Direction Control</div>
                   <div class="teleop-grid">
                     <div class="teleop-btn" data-key="u">U<span class="teleop-label">Here</span></div>
@@ -1325,6 +1326,21 @@
         </div>
       </div>
       <!-- content -->
+
+      <!-- Lichtblick 弹出窗口 -->
+      <div id="lichtblickPopup" class="code-editor-window" style="display: none; width: 80%; height: 80%; z-index: 2000; background: #111;">
+        <div id="lichtblickHeader" class="ui-bar ui-bar-b" style="cursor: move; display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; white-space: nowrap; overflow: hidden;">
+            <h1 style="margin:0; font-size: 14px; flex-shrink: 1;">Lichtblick Suite</h1>
+            <div style="display: flex; gap: 2px; flex-shrink: 0;">
+                <a href="#" id="fullLichtblickBtn" class="ui-btn ui-corner-all ui-icon-plus ui-btn-icon-notext ui-mini">Full</a>
+                <a href="#" id="minLichtblickBtn" class="ui-btn ui-corner-all ui-icon-minus ui-btn-icon-notext ui-mini">Min</a>
+                <a href="#" id="closeLichtblickBtn" class="ui-btn ui-corner-all ui-icon-delete ui-btn-icon-notext ui-mini">Close</a>
+            </div>
+        </div>
+        <div id="lichtblickBody" role="main" style="height: calc(100% - 40px); padding:0; overflow: hidden;">
+          <iframe id="lichtblickIframe" src="" style="width:100%; height:100%; border:none; background: white;"></iframe>
+        </div>
+      </div>
 
     </div>
     <!-- page -->

@@ -1641,6 +1641,7 @@ GZ3D.Gui = function(scene)
   this.initRosLogEvents();
   this.initCameraEvents();
   this.initTeleopEvents();
+  this.initLichtblickEvents();
 };
 
 /**
@@ -3419,5 +3420,105 @@ GZ3D.Gui.prototype.initTeleopEvents = function()
       if ($btn.length > 0) {
           $btn.removeClass('active-key');
       }
+  });
+};
+
+/**
+ * 初始化 Lichtblick 嵌入窗口逻辑
+ */
+GZ3D.Gui.prototype.initLichtblickEvents = function()
+{
+  var that = this;
+  var $popup = $('#lichtblickPopup');
+  var $iframe = $('#lichtblickIframe');
+  var $body = $('#lichtblickBody');
+  var $header = $('#lichtblickHeader');
+  
+  var serverHost = window.location.hostname;
+  var rosUrl = 'ws://' + serverHost + ':9090';
+  var targetUrl = 'http://' + serverHost + ':8888/?ds=rosbridge-websocket&ds.url=' + encodeURIComponent(rosUrl);
+
+  this.makeDraggable($popup, $header);
+
+  // 状态变量
+  var isMinimized = false;
+  var lastNormalSize = { w: '80%', h: '80%' }; 
+
+  // --- 菜单点击打开逻辑 ---
+  $('#view-lichtblick').on('click', function(e) {
+    e.preventDefault();
+    isMinimized = false; 
+    $popup.css({
+      'top': '10%',
+      'left': '10%',
+      'width': lastNormalSize.w,
+      'height': lastNormalSize.h,
+      'transform': 'none'
+    }).show();
+    $body.show().css('height', ($popup.height() - 45) + 'px');
+    $iframe.attr('src', targetUrl);
+    
+    $('#minLichtblickBtn').removeClass('ui-icon-navigation').addClass('ui-icon-minus');
+    
+    if (typeof globalEmitter !== 'undefined') {
+        globalEmitter.emit('closeTabs', true);
+    }
+  });
+
+  // --- 最小化逻辑 ---
+  $('#minLichtblickBtn').on('click', function(e) {
+    e.preventDefault();
+    
+    if (!isMinimized) {
+      // 执行最小化
+      lastNormalSize.w = $popup.css('width');
+      lastNormalSize.h = $popup.css('height');
+
+      $body.hide();
+      $popup.css({
+        'width': '250px',
+        'height': 'auto',
+        'min-height': '0'
+      });
+      
+      $(this).removeClass('ui-icon-minus').addClass('ui-icon-navigation');
+      isMinimized = true;
+    } else {
+      // 恢复正常大小
+      $popup.css({
+        'width': lastNormalSize.w,
+        'height': lastNormalSize.h
+      });
+      $body.show();
+      $body.css('height', ($popup.height() - 45) + 'px');
+      
+      $(this).removeClass('ui-icon-navigation').addClass('ui-icon-minus');
+      isMinimized = false;
+    }
+  });
+
+  // --- 关闭逻辑 ---
+  $('#closeLichtblickBtn').on('click tap', function(e) {
+    e.preventDefault();
+    $iframe.attr('src', ''); 
+    $popup.hide();
+  });
+
+  // --- 全屏逻辑 ---
+  var isFull = false;
+  $('#fullLichtblickBtn').on('click', function(e) {
+    e.preventDefault();
+    if (isMinimized) {
+        return;
+    }
+    
+    if (!isFull) {
+        $popup.css({ 'top': 0, 'left': 0, 'width': '100%', 'height': '100%' });
+        $body.css('height', ($popup.height() - 45) + 'px');
+    } else {
+        $popup.css({ 'top': '10%', 'left': '10%', 'width': '80%', 'height': '80%' });
+        $body.css('height', ($popup.height() - 45) + 'px');
+    }
+    isFull = !isFull;
   });
 };

@@ -10,3 +10,5 @@ repomix-output.xml
 roslaunch.sh
 repomix.sh
 repomix-docker.xml
+gzweb_sim_v1.tar.gz
+.vscode/

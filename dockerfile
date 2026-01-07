@@ -53,7 +53,7 @@ RUN export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/home/ubuntu20/catkin_ws/src/bin
     source /usr/share/gazebo/setup.sh && ./deploy.sh -m local
 
 # 7. 复制启动脚本
-COPY dev_entrypoint.sh /home/ubuntu20/gzweb/dev_entrypoint.sh
+# COPY dev_entrypoint.sh /home/ubuntu20/gzweb/dev_entrypoint.sh
 RUN chmod +x /home/ubuntu20/gzweb/dev_entrypoint.sh
 
 EXPOSE 8080 9090 11311
