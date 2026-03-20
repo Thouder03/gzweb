@@ -23,3 +23,12 @@ npm-debug.log
 test_results
 assets/scripts/my_script.js
 tmp/
+gzweb_sim_v1.tar.gz
+repomix-docker.xml
+repomix-output.xml
+repomix.sh
+roslaunch.sh
+.ai_memory/0_archive_context.md
+.ai_memory/1_project_context.md
+.ai_memory/2_active_task.md
+.ai_memory/3_work_log.md
