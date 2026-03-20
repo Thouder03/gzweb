@@ -538,24 +538,24 @@ GZ3D.Scene.prototype.onKeyDown = function(event)
 
   // Esc/R/T for changing manipulation modes
   // TODO: Remove jquery from scene
-  if (typeof GZ3D.Gui === 'function')
-  {
-    if (event.keyCode === 27) // Esc
-    {
-      $( '#view-mode' ).click();
-      $('input[type="radio"]').checkboxradio('refresh');
-    }
-    if (event.keyCode === 82) // R
-    {
-      $( '#rotate-mode' ).click();
-      $('input[type="radio"]').checkboxradio('refresh');
-    }
-    if (event.keyCode === 84) // T
-    {
-      $( '#translate-mode' ).click();
-      $('input[type="radio"]').checkboxradio('refresh');
-    }
-  }
+  // if (typeof GZ3D.Gui === 'function')
+  // {
+  //   if (event.keyCode === 27) // Esc
+  //   {
+  //     $( '#view-mode' ).click();
+  //     $('input[type="radio"]').checkboxradio('refresh');
+  //   }
+  //   if (event.keyCode === 82) // R
+  //   {
+  //     $( '#rotate-mode' ).click();
+  //     $('input[type="radio"]').checkboxradio('refresh');
+  //   }
+  //   if (event.keyCode === 84) // T
+  //   {
+  //     $( '#translate-mode' ).click();
+  //     $('input[type="radio"]').checkboxradio('refresh');
+  //   }
+  // }
 };
 
 /**

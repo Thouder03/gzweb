@@ -1429,8 +1429,8 @@ void GazeboInterface::LoadLaunch(const std::string &_package, const std::string 
 
   // 2. 执行 roslaunch
   // export PYTHONUNBUFFERED=1 确保日志实时输出
-  // nohup ... & 确保后台运行
-  std::string launchCmd = "export PYTHONUNBUFFERED=1; nohup roslaunch " + _package + " " + _file + " >> " + this->logFile + " 2>&1 &";
+  // nohup ... & 确保后台运行，不保存日志
+  std::string launchCmd = "export PYTHONUNBUFFERED=1; nohup roslaunch " + _package + " " + _file + " > /dev/null 2>&1 &";
   
   std::cerr << "[GZBridge] Launching: " << launchCmd << std::endl;
   RunSystemCommand(launchCmd);
