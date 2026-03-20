@@ -566,11 +566,20 @@ GZ3D.Scene.prototype.onKeyDown = function(event)
  */
 GZ3D.Scene.prototype.getRayCastModel = function(pos, intersect)
 {
-  var vector = new THREE.Vector3(
-      ((pos.x - this.getDomElement().offsetLeft)
-      / this.getDomElement().width) * 2 - 1,
-      -((pos.y - this.getDomElement().offsetTop)
-      / this.getDomElement().height) * 2 + 1, 1);
+  var el = this.getDomElement();
+  
+  // 使用 getBoundingClientRect 获取精确的 CSS 尺寸和位置
+  // 这自动处理了偏移量(offsetLeft/Top)和滚动条影响
+  var rect = el.getBoundingClientRect();
+
+  // 计算归一化设备坐标 (NDC)
+  // 范围: [-1, 1]
+  // 公式: ((鼠标X - 画布左侧) / 画布CSS宽度) * 2 - 1
+  var x = ((pos.x - rect.left) / rect.width) * 2 - 1;
+  var y = -((pos.y - rect.top) / rect.height) * 2 + 1;
+
+  var vector = new THREE.Vector3(x, y, 1);
+  
   vector.unproject(this.camera);
   var ray = new THREE.Raycaster( this.camera.position,
       vector.sub(this.camera.position).normalize() );
@@ -725,6 +734,11 @@ GZ3D.Scene.prototype.setSize = function(width, height)
     this.cameraOrtho.bottom = -height / 2;
     this.cameraOrtho.updateProjectionMatrix();
   }
+
+  // --- 修复开始 ---
+  // 强制更新像素比，以防窗口在不同 DPI 的屏幕间移动
+  this.renderer.setPixelRatio(window.devicePixelRatio);
+  // --- 修复结束 ---
 
   this.renderer.setSize(width, height);
   this.render();
