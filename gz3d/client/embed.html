@@ -104,9 +104,9 @@
               </a>
               <a ng-repeat="category in categories" ng-click="openTab('insertMenu-'+category.path)" data-role="button" class="insertMenuItem insertMenuCategoryItem" title="{{category.title}}">
                 {{category.title}}<br>
-                <img src="assets/{{category.examplePath1}}/thumbnails/0.png">
-                <img src="assets/{{category.examplePath2}}/thumbnails/0.png">
-                <img src="assets/{{category.examplePath3}}/thumbnails/0.png">
+                <img data-src="assets/{{category.examplePath1}}/thumbnails/0.png">
+                <img data-src="assets/{{category.examplePath2}}/thumbnails/0.png">
+                <img data-src="assets/{{category.examplePath3}}/thumbnails/0.png">
               </a>
             </div>
           </div>
@@ -158,7 +158,7 @@
             <div class="panelContent">
               <a ng-repeat="model in category.models" id="insert-entity-{{model.modelPath}}" ng-mousedown="spawnEntity(model.modelPath)" data-role="button" class="insertMenuItem" title="{{model.modelTitle}}">
               {{model.modelTitle}}<br>
-              <img src="assets/{{model.modelPath}}/thumbnails/0.png">
+              <img data-src="assets/{{model.modelPath}}/thumbnails/0.png">
             </a>
             </div>
           </div>
@@ -186,7 +186,7 @@
               <div id="expandable-MODELS" class="expandedContent">
                 <ul data-role="listview">
                   <div class="clickable treeItem {{model.selected}}" ng-repeat="model in models" ng-click="selectEntity(model.name)" ng-right-click="openEntityMenu($event, model.name)" title="{{model.name}}">
-                    <div class="treeItemImg"><img src="{{model.thumbnail}}"></div>
+                    <div class="treeItemImg"><img data-src="{{model.thumbnail}}"></div>
                     <div class="treeItemTitle">{{model.name}}</div><br>
                   </div>
                 </ul>
@@ -199,7 +199,7 @@
               <div id="expandable-LIGHTS" class="expandedContent">
                 <ul data-role="listview">
                   <div class="clickable treeItem {{light.selected}}" ng-repeat="light in lights" ng-click="selectEntity(light.name)" ng-right-click="openEntityMenu($event, light.name)" title="{{light.name}}">
-                    <div class="treeItemImg"><img src="{{light.thumbnail}}"></div>
+                    <div class="treeItemImg"><img data-src="{{light.thumbnail}}"></div>
                     <div class="treeItemTitle">{{light.name}}</div><br>
                   </div>
                 </ul>
@@ -214,7 +214,7 @@
             </div>
             <div class="panelContent">
               <div class="propertyPanelImg">
-                <img src="{{model.thumbnail}}">
+                <img data-src="{{model.thumbnail}}">
               </div>
               <div class="propertyPanelHeader">
                 <h4>Property</h4>
@@ -233,7 +233,7 @@
                 <div class="property propertyLevel2">
                   <div>Static</div>
                   <div class="propertyToggle">
-                    <img src="style/images/{{model.is_static.icon}}.png">
+                    <img data-src="style/images/{{model.is_static.icon}}.png">
                     <div>
                       {{model.is_static.title}}
                     </div>
@@ -308,7 +308,7 @@
                     <div class="clickable property propertyLevel3" ng-click="toggleProperty('self_collide', link.name)">
                       <div>Self Collide</div>
                       <div class="propertyToggle">
-                        <img src="style/images/{{link.self_collide.icon}}.png">
+                        <img data-src="style/images/{{link.self_collide.icon}}.png">
                         <div>
                           {{link.self_collide.title}}
                         </div>
@@ -317,7 +317,7 @@
                     <div class="clickable property propertyLevel3" ng-click="toggleProperty('gravity', link.name)">
                       <div>Gravity</div>
                       <div class="propertyToggle">
-                        <img src="style/images/{{link.gravity.icon}}.png">
+                        <img data-src="style/images/{{link.gravity.icon}}.png">
                         <div>
                           {{link.gravity.title}}
                         </div>
@@ -326,7 +326,7 @@
                     <div class="clickable property propertyLevel3" ng-click="toggleProperty('kinematic', link.name)">
                       <div>Kinematic</div>
                       <div class="propertyToggle">
-                        <img src="style/images/{{link.kinematic.icon}}.png">
+                        <img data-src="style/images/{{link.kinematic.icon}}.png">
                         <div>
                           {{link.kinematic.title}}
                         </div>
@@ -335,7 +335,7 @@
                     <div class="property propertyLevel3">
                       <div>Canonical</div>
                       <div class="propertyToggle">
-                        <img src="style/images/{{link.canonical.icon}}.png">
+                        <img data-src="style/images/{{link.canonical.icon}}.png">
                         <div>
                           {{link.canonical.title}}
                         </div>
@@ -675,7 +675,7 @@
             </div>
             <div class="panelContent">
               <div class="propertyPanelImg">
-                <img src="{{light.thumbnail}}">
+                <img data-src="{{light.thumbnail}}">
               </div>
               <div class="propertyPanelHeader">
                 <h4>Property</h4>
@@ -927,7 +927,7 @@
               <div class="property propertyLevel1">
                 <div>Enable Physics</div>
                 <div class="propertyToggle">
-                  <img src="style/images/{{physics.enable_physics.icon}}.png">
+                  <img data-src="style/images/{{physics.enable_physics.icon}}.png">
                   <div>
                     {{physics.enable_physics.title}}
                   </div>
