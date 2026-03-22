@@ -86,10 +86,10 @@
         break;
 
       case 'gz:showCollisions':
-        if (typeof scene !== 'undefined') {
-          scene.showCollisions = !!msg.payload.visible;
-          // 触发已有模型的碰撞体可见性刷新
-          emitter.emit('show_collisions', msg.payload.visible ? 'show' : 'hide');
+        if (typeof scene !== 'undefined' && scene.showCollision) {
+          // 必须调用 showCollision() 方法，而非直接赋值 showCollisions 属性
+          // 该方法会遍历场景中所有 COLLISION_VISUAL 对象并设置可见性
+          scene.showCollision(!!msg.payload.visible);
         }
         break;
 
