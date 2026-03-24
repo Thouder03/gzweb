@@ -33,6 +33,11 @@ RUN apt-get update && apt-get install -y \
     ros-noetic-gazebo-plugins \
     ros-noetic-rosbridge-suite \
     ros-noetic-compressed-image-transport \
+    ros-noetic-navigation \
+    ros-noetic-gmapping \
+    ros-noetic-hector-slam \
+    ros-noetic-slam-karto \
+    ros-noetic-teb-local-planner \
     && rm -rf /var/lib/apt/lists/*
 
 # 确保 nodejs 命令可以通过 node 访问
