@@ -1,0 +1,20 @@
+version: '3'
+services:
+  gzweb:
+    build: .
+    image: gzweb_sim:v1
+    container_name: gzweb_dev
+    ports:
+      - "8080:8080"  # Gzweb
+      - "9090:9090"  # Rosbridge
+      - "11311:11311"
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      - DISPLAY=$DISPLAY
+    shm_size: '512mb'
+    stdin_open: true
+    tty: true
+    privileged: true
