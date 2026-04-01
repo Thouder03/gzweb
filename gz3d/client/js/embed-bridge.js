@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 /**
  * embed-bridge.js
  *
@@ -25,6 +26,20 @@
     }
   }
 
+  /**
+   * 检测实际 WebSocket 连接状态
+   *
+   * 不使用 iface.isConnected：
+   * - gziface.js 在 WebSocket 断开后不会将 isConnected 重置为 false
+   * - isConnected 只在 ~/status 话题显式返回 'error' 时才清零
+   * 因此直接检查底层 WebSocket 的 readyState 以获取真实状态
+   */
+  function isGzConnected() {
+    if (typeof iface === 'undefined') return false;
+    var ws = iface.webSocket && iface.webSocket.socket;
+    return ws ? ws.readyState === WebSocket.OPEN : false;
+  }
+
   // ════════════════════════════════════════════
   // L2: 状态回传 (iframe → Vue)
   // ════════════════════════════════════════════
@@ -32,6 +47,18 @@
   // 连接状态
   emitter.on('connection', function() {
     postToParent({ type: 'gz:connection', payload: { connected: true } });
+
+    // 连接成功后，监听底层 WebSocket 的 close/error 事件
+    // gziface.js 的 connectionError 只在首次连接失败时发出，
+    // 连接成功后再断开不会触发，必须在此处补充监听
+    if (typeof iface !== 'undefined' && iface.webSocket) {
+      iface.webSocket.on('close', function() {
+        postToParent({ type: 'gz:connection', payload: { connected: false } });
+      });
+      iface.webSocket.on('error', function() {
+        postToParent({ type: 'gz:connection', payload: { connected: false } });
+      });
+    }
   });
 
   emitter.on('connectionError', function() {
@@ -101,10 +128,13 @@
 
       // ── 健康检测 ──
       case 'gz:ping':
+        // 使用实际 WebSocket readyState 而非 iface.isConnected
+        // 原因: iface.isConnected 在 WebSocket 断开后不会自动重置，
+        //      导致断连时 pong 仍回 connected=true，父窗口无法感知断连
         postToParent({
           type: 'gz:pong',
           payload: {
-            connected: (typeof iface !== 'undefined') ? iface.isConnected : false,
+            connected: isGzConnected(),
             timestamp: Date.now()
           }
         });
