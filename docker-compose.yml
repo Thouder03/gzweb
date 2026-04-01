@@ -13,7 +13,7 @@ services:
     devices:
       - /dev/dri:/dev/dri
     environment:
-      - DISPLAY=$DISPLAY
+      - DISPLAY=:0
     shm_size: '512mb'
     stdin_open: true
     tty: true
